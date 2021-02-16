@@ -1,5 +1,4 @@
-﻿using EFCorePowerTools.Shared.Models;
-using ReverseEngineer20;
+﻿using RevEng.Shared;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -11,9 +10,9 @@ namespace EFCorePowerTools.Helpers
 {
     public class ReverseEngineerHelper
     {
-        public List<TableInformationModel> NormalizeTables(List<TableInformationModel> tables, bool shouldFix)
+        public List<SerializationTableModel> NormalizeTables(List<SerializationTableModel> tables, bool shouldFix)
         {
-            var result = new List<TableInformationModel>();
+            var result = new List<SerializationTableModel>();
             foreach (var table in tables)
             {
                 if (shouldFix && !table.Name.StartsWith("[", StringComparison.OrdinalIgnoreCase))

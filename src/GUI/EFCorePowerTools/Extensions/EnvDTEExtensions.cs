@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.ProjectSystem;
 
 namespace EFCorePowerTools.Extensions
@@ -12,6 +13,8 @@ namespace EFCorePowerTools.Extensions
     {
         public static string[] GetDacpacFilesInActiveSolution(this DTE dte, string[] projectPaths)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             var result = new HashSet<string>();
 
             if (!dte.Solution.IsOpen)
@@ -29,14 +32,16 @@ namespace EFCorePowerTools.Extensions
                 {
                     var project = dte.Solution.Projects
                         .OfType<Project>()
+#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
                         .FirstOrDefault(p => p.FullName == projectPath);
+#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
                     if (project != null)
                     {
                         AddLinkedFiles(result, project);
                     }
                 }
                 catch
-                { 
+                {
                     // Ignore
                 }
 
@@ -51,19 +56,35 @@ namespace EFCorePowerTools.Extensions
                 .ToArray();
         }
 
-        private static void AddFiles(HashSet<string> result, string path)
+        public static string GetStartupProjectOutputPath(this DTE dte)
         {
-            var files = DirSearch(path, "*.sqlproj");
-            foreach (var file in files)
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            object[] startupProject = (object[])dte.Solution.SolutionBuild.StartupProjects;
+
+            if (startupProject?.Length != 1)
             {
-	            result.Add(file);
+                return null;
             }
 
-            files = DirSearch(path, "*.dacpac");
-            foreach (var file in files)
+            try
             {
-	            result.Add(file);
+                var project = dte.Solution.Item((string)startupProject[0]);
+
+                var path = project.GetOutPutAssemblyPath();
+
+                return path;
             }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static void AddFiles(HashSet<string> result, string path)
+        {
+            result.AddRange(Directory.GetFiles(path, "*.sqlproj", SearchOption.AllDirectories));
+            result.AddRange(Directory.GetFiles(path, "*.dacpac", SearchOption.AllDirectories));
         }
 
         /// <summary>
@@ -73,7 +94,11 @@ namespace EFCorePowerTools.Extensions
         /// <param name="project"></param>
         private static void AddLinkedFiles(HashSet<string> result, Project project)
         {
-	        LinkedFilesSearch(project.ProjectItems, result);
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            if (project.ProjectItems == null) return;
+
+            LinkedFilesSearch(project.ProjectItems, result);
         }
 
         /// <summary>
@@ -83,37 +108,41 @@ namespace EFCorePowerTools.Extensions
         /// <param name="files"></param>
         private static void LinkedFilesSearch(ProjectItems projectItems, HashSet<string> files)
         {
-	        foreach (ProjectItem item in projectItems)
-	        {
-		        if (item.ProjectItems?.Count > 0)
-		        {
-			        LinkedFilesSearch(item.ProjectItems, files);
-		        }
+            ThreadHelper.ThrowIfNotOnUIThread();
 
-		        if (item.Kind == VSConstants.ItemTypeGuid.PhysicalFile_string)
-		        {
-			        try
-			        {
-				        var isLink = item.Properties.Item("IsLink")?.Value as bool?;
-				        var extension = item.Properties.Item("Extension")?.Value as string;
-				        if (isLink != null && isLink.Value &&
-				            extension != null && extension.Equals(".dacpac", StringComparison.OrdinalIgnoreCase))
-				        {
-					        var fullPath = item.Properties.Item("FullPath").Value as string;
-					        if (!string.IsNullOrEmpty(fullPath))
-						        files.Add(fullPath);
-				        }
-			        }
-			        catch
-			        {
-				        // Just in case 'index' parameter in Properties.Item(object index) is not a string
-			        }
-		        }
-	        }
+            foreach (ProjectItem item in projectItems)
+            {
+                if (item.ProjectItems?.Count > 0)
+                {
+                    LinkedFilesSearch(item.ProjectItems, files);
+                }
+
+                if (item.Kind == VSConstants.ItemTypeGuid.PhysicalFile_string)
+                {
+                    try
+                    {
+                        var isLink = item.Properties.Item("IsLink")?.Value as bool?;
+                        var extension = item.Properties.Item("Extension")?.Value as string;
+                        if (isLink != null && isLink.Value &&
+                            extension != null && extension.Equals(".dacpac", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var fullPath = item.Properties.Item("FullPath").Value as string;
+                            if (!string.IsNullOrEmpty(fullPath))
+                                files.Add(fullPath);
+                        }
+                    }
+                    catch
+                    {
+                        // Just in case 'index' parameter in Properties.Item(object index) is not a string
+                    }
+                }
+            }
         }
 
         public static string BuildSqlProj(this DTE dte, string sqlprojPath)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             if (sqlprojPath.EndsWith(".dacpac")) return sqlprojPath;
 
             var project = GetProject(dte, sqlprojPath);
@@ -121,7 +150,8 @@ namespace EFCorePowerTools.Extensions
 
             var searchPath = Path.Combine(Path.GetDirectoryName(project.FullName), "bin");
 
-            var files = DirSearch(searchPath, "*.dacpac");
+            var files = Directory.GetFiles(searchPath, "*.dacpac", SearchOption.AllDirectories);
+
             foreach (var file in files)
             {
                 File.Delete(file);
@@ -130,7 +160,8 @@ namespace EFCorePowerTools.Extensions
             var buildStartTime = DateTime.Now;
             if (!project.TryBuild()) return null;
 
-            files = DirSearch(searchPath, "*.dacpac");
+            files = Directory.GetFiles(searchPath, "*.dacpac", SearchOption.AllDirectories);
+
             foreach (var file in files)
             {
                 var lastWriteTime = File.GetLastWriteTime(file);
@@ -145,6 +176,8 @@ namespace EFCorePowerTools.Extensions
 
         private static Project GetProject(DTE dte, string projectItemPath)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             var projects = Projects(dte);
             foreach (var project in projects)
             {
@@ -170,6 +203,8 @@ namespace EFCorePowerTools.Extensions
 
         private static IList<Project> Projects(DTE dte)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             Projects projects = dte.Solution.Projects;
             List<Project> list = new List<Project>();
             var item = projects.GetEnumerator();
@@ -196,6 +231,8 @@ namespace EFCorePowerTools.Extensions
 
         private static IEnumerable<Project> GetSolutionFolderProjects(Project solutionFolder)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             List<Project> list = new List<Project>();
             for (var i = 1; i <= solutionFolder.ProjectItems.Count; i++)
             {
@@ -217,29 +254,6 @@ namespace EFCorePowerTools.Extensions
             }
             return list;
         }
-
-        public static List<string> DirSearch(string sDir, string pattern)
-        {
-            var files = new List<String>();
-
-            try
-            {
-                foreach (string f in Directory.GetFiles(sDir, pattern))
-                {
-                    files.Add(f);
-                }
-                foreach (string d in Directory.GetDirectories(sDir))
-                {
-                    files.AddRange(DirSearch(d, pattern));
-                }
-            }
-            catch
-            {
-            }
-
-            return files;
-        }
-
 
     }
 }

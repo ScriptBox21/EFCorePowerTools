@@ -1,6 +1,4 @@
-﻿using EFCorePowerTools.Shared.Models;
-using ReverseEngineer20;
-using ReverseEngineer20.ReverseEngineer;
+﻿using RevEng.Shared;
 using System;
 using System.Collections.Generic;
 
@@ -24,37 +22,11 @@ namespace EFCorePowerTools.Handlers.ReverseEngineer
             _schemas = schemas;
         }
 
-        public List<TableInformationModel> GetTableDefinitions(bool useEFCore5)
+        public List<TableModel> GetTableDefinitions(bool useEFCore5)
         {
             var launcher = new EfRevEngLauncher(null, useEFCore5);
 
-            List<TableInformationModel> tables;
-
-            if (_databaseType == DatabaseType.Undefined)
-            {
-                tables = launcher.GetDacpacTables(_connectionString);
-            }
-            else
-            {
-                tables = launcher.GetTables(_connectionString, _databaseType, _schemas);
-            }
-
-            foreach (var item in tables)
-            {
-                if (item.IsProcedure)
-                {
-                    item.HasPrimaryKey = true;
-                    continue;
-                }
-
-                if (!item.HasPrimaryKey)
-                {
-                    item.HasPrimaryKey = true;
-                    item.ShowKeylessWarning = true;
-                }
-            }
-
-            return tables;
+            return launcher.GetTables(_connectionString, _databaseType, _schemas);
         }
     }
 }

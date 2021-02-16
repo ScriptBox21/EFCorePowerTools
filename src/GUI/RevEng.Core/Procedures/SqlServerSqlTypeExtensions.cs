@@ -1,4 +1,4 @@
-using RevEng.Core.Procedures.Model.Metadata;
+using RevEng.Core.Abstractions.Metadata;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -16,14 +16,17 @@ namespace RevEng.Core
                 { "numeric", "decimal" },
                 { "rowversion", "timestamp" },
                 { "table type", "structured" },
+                { "sql_variant", "variant" },
+                { "geography", "variant" },
+                { "geometry", "variant" },
             });
 
-        public static Type ClrType(this ProcedureParameter storedProcedureParameter)
+        public static Type ClrType(this ModuleParameter storedProcedureParameter)
         {
             return GetClrType(storedProcedureParameter.StoreType, storedProcedureParameter.Nullable);
         }
 
-        public static SqlDbType DbType(this ProcedureParameter storedProcedureParameter)
+        public static SqlDbType DbType(this ModuleParameter storedProcedureParameter)
         {
             return GetSqlDbType(storedProcedureParameter.StoreType);
         }
@@ -119,7 +122,7 @@ namespace RevEng.Core
                     return isNullable ? typeof(DateTimeOffset?) : typeof(DateTimeOffset);
 
                 default:
-                    throw new ArgumentOutOfRangeException("sqlType");
+                    throw new ArgumentOutOfRangeException(nameof(storeType), $"storetype: {storeType}");
             }
         }
 

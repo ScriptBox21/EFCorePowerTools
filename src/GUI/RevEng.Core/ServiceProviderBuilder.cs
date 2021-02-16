@@ -1,8 +1,8 @@
 ﻿using EntityFrameworkCore.Scaffolding.Handlebars;
 using ErikEJ.EntityFrameworkCore.SqlServer.Scaffolding;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Design.Internal;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Scaffolding;
 using Microsoft.EntityFrameworkCore.Scaffolding.Internal;
 using Microsoft.EntityFrameworkCore.Sqlite.Design.Internal;
@@ -12,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Design.Internal;
 using Oracle.EntityFrameworkCore.Design.Internal;
 using Pomelo.EntityFrameworkCore.MySql.Design.Internal;
 using RevEng.Core.Procedures;
+using RevEng.Shared;
 using System;
 
-namespace ReverseEngineer20.ReverseEngineer
+namespace RevEng.Core
 {
     public static class ServiceProviderBuilder
     {
@@ -25,22 +26,47 @@ namespace ReverseEngineer20.ReverseEngineer
 
             serviceCollection
                 .AddEntityFrameworkDesignTimeServices()
-                .AddSingleton<ICSharpEntityTypeGenerator, CommentCSharpEntityTypeGenerator>()
+#if CORE50
+                .AddSingleton<ICSharpEntityTypeGenerator>(provider =>
+                 new CommentCSharpEntityTypeGenerator(                    
+                    provider.GetService<IAnnotationCodeGenerator>(),
+                    provider.GetService<ICSharpHelper>(),
+                    options.UseNullableReferences,
+                    options.UseNoConstructor))
+#else
+                .AddSingleton<ICSharpEntityTypeGenerator>(provider =>
+                 new CommentCSharpEntityTypeGenerator(
+                    provider.GetService<ICSharpHelper>(),
+                    options.UseNullableReferences,
+                    options.UseNoConstructor))
+#endif
                 .AddSingleton<IOperationReporter, OperationReporter>()
-                .AddSingleton<IOperationReportHandler, OperationReportHandler>();
-
-            if (options.UseHandleBars)
-            {
-                //TODO Consider being selective based on SelectedToBeGenerated
-                var selected = ReverseEngineerOptions.DbContextAndEntities;
-                var language = (LanguageOptions)options.SelectedHandlebarsLanguage;
-                serviceCollection.AddHandlebarsScaffolding(selected, language);
-                serviceCollection.AddSingleton<ITemplateFileService>(provider => new CustomTemplateFileService(options.ProjectPath));
-            }
+                .AddSingleton<IOperationReportHandler, OperationReportHandler>()
+                .AddSingleton<IScaffoldingModelFactory>(provider =>
+                new ColumnRemovingScaffoldingModelFactory(
+                    provider.GetService<IOperationReporter>(),
+                    provider.GetService<ICandidateNamingService>(),
+                    provider.GetService<IPluralizer>(),
+                    provider.GetService<ICSharpUtilities>(),
+                    provider.GetService<IScaffoldingTypeMapper>(),
+                    provider.GetService<LoggingDefinitions>(),
+                    options.Tables,
+                    options.DatabaseType
+                ));
 
             if (options.CustomReplacers != null)
             {
                 serviceCollection.AddSingleton<ICandidateNamingService>(provider => new ReplacingCandidateNamingService(options.CustomReplacers));
+            }
+
+            if (options.UseHandleBars)
+            {
+                serviceCollection.AddHandlebarsScaffolding(hbOptions =>
+                {
+                    hbOptions.ReverseEngineerOptions = ReverseEngineerOptions.DbContextAndEntities;
+                    hbOptions.LanguageOptions = (LanguageOptions)options.SelectedHandlebarsLanguage;
+                });
+                serviceCollection.AddSingleton<ITemplateFileService>(provider => new CustomTemplateFileService(options.ProjectPath));
             }
 
             if (options.UseInflector || options.UseLegacyPluralizer)
@@ -49,10 +75,13 @@ namespace ReverseEngineer20.ReverseEngineer
                 {
                     serviceCollection.AddSingleton<IPluralizer, LegacyPluralizer>();
                 }
+#if CORE50
+#else
                 else
                 {
                     serviceCollection.AddSingleton<IPluralizer, HumanizerPluralizer>();
                 }
+#endif
             }
 
             // Add database provider services
@@ -62,10 +91,8 @@ namespace ReverseEngineer20.ReverseEngineer
                     var provider = new SqlServerDesignTimeServices();
                     provider.ConfigureDesignTimeServices(serviceCollection);
 
-                    if (!string.IsNullOrEmpty(options.Dacpac))
-                    {
-                        serviceCollection.AddSingleton<IDatabaseModelFactory, SqlServerDacpacDatabaseModelFactory>();
-                    }
+                    serviceCollection.AddSqlServerStoredProcedureDesignTimeServices();
+                    serviceCollection.AddSqlServerFunctionDesignTimeServices();
 
                     if (options.UseSpatial)
                     {
@@ -73,16 +100,20 @@ namespace ReverseEngineer20.ReverseEngineer
                         spatial.ConfigureDesignTimeServices(serviceCollection);
                     }
 
-                    if (string.IsNullOrEmpty(options.Dacpac))
-                    {
-                        serviceCollection.AddSqlServerStoredProcedureDesignTimeServices();
-                    }
+                    break;
 
-                    var builder = new SqlConnectionStringBuilder(options.ConnectionString)
+                case DatabaseType.SQLServerDacpac:
+                    var dacProvider = new SqlServerDesignTimeServices();
+                    dacProvider.ConfigureDesignTimeServices(serviceCollection);
+
+                    serviceCollection.AddSingleton<IDatabaseModelFactory, SqlServerDacpacDatabaseModelFactory>();
+                    serviceCollection.AddSqlServerDacpacStoredProcedureDesignTimeServices();
+
+                    if (options.UseSpatial)
                     {
-                        CommandTimeout = 300
-                    };
-                    options.ConnectionString = builder.ConnectionString;
+                        var spatial = new SqlServerNetTopologySuiteDesignTimeServices();
+                        spatial.ConfigureDesignTimeServices(serviceCollection);
+                    }
 
                     break;
 

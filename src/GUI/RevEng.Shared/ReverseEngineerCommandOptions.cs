@@ -1,10 +1,7 @@
-﻿using ReverseEngineer20.ReverseEngineer;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace ReverseEngineer20
+namespace RevEng.Shared
 {
-    using EFCorePowerTools.Shared.Models;
-
     public class ReverseEngineerCommandOptions
     {
         public DatabaseType DatabaseType { get; set; }
@@ -17,7 +14,7 @@ namespace ReverseEngineer20
         public string ProjectRootNamespace { get; set; }
         public bool UseFluentApiOnly { get; set; }
         public string ContextClassName { get; set; }
-        public List<TableInformationModel> Tables { get; set; }
+        public List<SerializationTableModel> Tables { get; set; }
         public bool UseDatabaseNames { get; set; }
         public bool UseInflector { get; set; }
         public bool UseHandleBars { get; set; }
@@ -31,7 +28,10 @@ namespace ReverseEngineer20
         public bool UseSpatial { get; set; }
         public bool UseDbContextSplitting { get; set; }
         public bool UseNodaTime { get; set; }
-        public bool UseStoredProcedures { get; set; }
+        public bool UseBoolPropertiesWithoutDefaultSql { get; set; }
+        public bool UseNullableReferences { get; set; }
+        public bool UseNoConstructor { get; set; }
+        public bool UseNoNavigations { get; set; }
         public bool FilterSchemas { get; set; }
         public List<SchemaInfo> Schemas { get; set; }
     }

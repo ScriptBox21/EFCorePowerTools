@@ -1,5 +1,5 @@
 ﻿using EFCorePowerTools.Handlers.ReverseEngineer;
-using EFCorePowerTools.Shared.Models;
+using RevEng.Shared;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace ReverseEngineer20.ReverseEngineer
+namespace EFCorePowerTools.Handlers.ReverseEngineer
 {
     public class EfRevEngLauncher
     {
@@ -45,9 +45,13 @@ namespace ReverseEngineer20.ReverseEngineer
                 UseSpatial = options.UseSpatial,
                 UseDbContextSplitting = options.UseDbContextSplitting,
                 UseNodaTime = options.UseNodaTime,
+                UseBoolPropertiesWithoutDefaultSql = options.UseBoolPropertiesWithoutDefaultSql,
+                UseNullableReferences = options.UseNullableReferences,
+                UseNoConstructor = options.UseNoConstructor,
+                UseNoNavigations = options.UseNoNavigations,
             };
 
-            var launcher = new ReverseEngineer20.ReverseEngineer.EfRevEngLauncher(commandOptions, useEFCore5);
+            var launcher = new EfRevEngLauncher(commandOptions, useEFCore5);
             return launcher.GetOutput();
         }
 
@@ -58,27 +62,29 @@ namespace ReverseEngineer20.ReverseEngineer
             resultDeserializer = new ResultDeserializer();
         }
 
-        public List<TableInformationModel> GetDacpacTables(string dacpacPath)
+        public List<TableModel> GetDacpacTables(string dacpacPath)
         {
             var arguments = "\"" + dacpacPath + "\"";
             return GetTablesInternal(arguments);
         }
 
-        public List<TableInformationModel> GetTables(string connectionString, DatabaseType databaseType, SchemaInfo[] schemas)
+        public List<TableModel> GetTables(string connectionString, DatabaseType databaseType, SchemaInfo[] schemas)
         {
             var arguments = ((int)databaseType).ToString() + " \"" + connectionString.Replace("\"", "\\\"") + "\"";
 
             if (schemas != null)
+            {
                 arguments += $" \"{string.Join(",", schemas.Select(s => s.Name.Replace("\"", "\\\"")))}\"";
+            }
 
             return GetTablesInternal(arguments);
         }
 
-        private List<TableInformationModel> GetTablesInternal(string arguments)
+        private List<TableModel> GetTablesInternal(string arguments)
         {
             if (!IsDotnetInstalled())
             {
-                throw new Exception($"Reverse engineer error: Unable to launch 'dotnet' version 3 or newer. Do you have it installed?");
+                throw new Exception($"Reverse engineer error: Unable to launch 'dotnet' version 3.1. Do you have the runtime installed? Check with 'dotnet --list-runtimes'");
             }
 
             var launchPath = DropNetCoreFiles();
@@ -94,9 +100,9 @@ namespace ReverseEngineer20.ReverseEngineer
             return resultDeserializer.BuildTableResult(standardOutput);
         }
 
-        public ReverseEngineerResult GetOutput()
+        private ReverseEngineerResult GetOutput()
         {
-            var path = Path.GetTempFileName() + "json";
+            var path = Path.GetTempFileName() + ".json";
             File.WriteAllText(path, options.Write());
 
             var launchPath = Path.Combine(Path.GetTempPath(), "efreveng");
@@ -108,6 +114,12 @@ namespace ReverseEngineer20.ReverseEngineer
             };
 
             var standardOutput = RunProcess(startInfo);
+
+            try
+            {
+                File.Delete(path);
+            }
+            catch { }
 
             return resultDeserializer.BuildResult(standardOutput);
         }
@@ -122,13 +134,23 @@ namespace ReverseEngineer20.ReverseEngineer
             var startInfo = new ProcessStartInfo
             {
                 FileName = "dotnet",
-                Arguments = "--version",
+                Arguments = "--list-runtimes",
             };
 
             var result = RunProcess(startInfo);
 
-            return result.StartsWith("3.", StringComparison.OrdinalIgnoreCase)
-                || result.StartsWith("5.", StringComparison.OrdinalIgnoreCase);
+            var isInstalled = false;
+            var sdks = result.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var item in sdks)
+            {
+                isInstalled = item.StartsWith("Microsoft.NETCore.App 3.1.", StringComparison.OrdinalIgnoreCase);
+                if (isInstalled)
+                {
+                    break;
+                }
+            }
+
+            return isInstalled;
         }
 
         private static string RunProcess(ProcessStartInfo startInfo)
@@ -146,7 +168,10 @@ namespace ReverseEngineer20.ReverseEngineer
                 {
                     standardOutput.Append(process.StandardOutput.ReadToEnd());
                 }
-                if (process != null) standardOutput.Append(process.StandardOutput.ReadToEnd());
+                if (process != null)
+                {
+                    standardOutput.Append(process.StandardOutput.ReadToEnd());
+                }
             }
 
             return standardOutput.ToString();

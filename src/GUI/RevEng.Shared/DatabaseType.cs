@@ -1,5 +1,5 @@
 ﻿// ReSharper disable InconsistentNaming
-namespace ReverseEngineer20
+namespace RevEng.Shared
 {
     public enum DatabaseType
     {
@@ -11,5 +11,6 @@ namespace ReverseEngineer20
         Npgsql = 5,
         Mysql = 6,
         Oracle = 7,
+        SQLServerDacpac = 8,
     }
 }

@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
+﻿using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
 using NUnit.Framework;
-using ReverseEngineer20.ReverseEngineer;
+using RevEng.Core;
+using RevEng.Shared;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -149,12 +149,6 @@ namespace UnitTests.Services
                   {
                        SchemaName = "stg",
                        UseSchemaName = false,
-                       Tables = new List<TableRenamer>{ new TableRenamer {  Name = "DeliveryAddress", NewName = "stg_DeliveryAddress" } }
-                  },
-                  new Schema
-                  {
-                       SchemaName = "stg",
-                       UseSchemaName = false,
                        Tables = new List<TableRenamer>
                        {
                            new TableRenamer
@@ -169,8 +163,8 @@ namespace UnitTests.Services
                                      NewName = "JobRename",
                                    }
                                }
-                           }
-
+                           },
+                           new TableRenamer {  Name = "DeliveryAddress", NewName = "stg_DeliveryAddress" }
                        }
                   },
               };

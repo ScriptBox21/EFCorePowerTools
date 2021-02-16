@@ -1,11 +1,12 @@
-﻿using System;
+﻿using RevEng.Shared;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ReverseEngineer20.ReverseEngineer
+namespace RevEng.Core
 {
     public static class DbContextSplitter
     {
@@ -14,13 +15,17 @@ namespace ReverseEngineer20.ReverseEngineer
         {
             var dbContextFilePath = Path.GetFullPath(dbContextPath);
 
-            var configurationsDirectoryPath = Path.GetDirectoryName(dbContextFilePath);
+            var configurationsDirectoryPath = Path.Combine(Path.GetDirectoryName(dbContextFilePath), "Configurations");
+
+            Directory.CreateDirectory(configurationsDirectoryPath);
 
             var source = File.ReadAllText(dbContextFilePath, Encoding.UTF8);
 
             var contextNamespace = Regex.Match(source, @"(?<=(?:^|\s|;)namespace\s+).*?(?=(?:\s|\{))", RegexOptions.Multiline | RegexOptions.Singleline).Value;
 
             var configurationNamespace = configNamespace ?? contextNamespace;
+
+            configurationNamespace = configurationNamespace + ".Configurations";
 
             var contextUsingStatements = Regex.Matches(source, @"^using\s+.*?;", RegexOptions.Multiline | RegexOptions.Singleline)
                 .Cast<Match>()
@@ -71,12 +76,16 @@ namespace ReverseEngineer20.ReverseEngineer
                 _sb.AppendLine();
                 _sb.AppendLine($"namespace {configurationNamespace}");
                 _sb.AppendLine("{");
-                _sb.AppendLine(new string(' ', 4) + $"public class {entityName}Configuration : IEntityTypeConfiguration<{entityName}>");
+                _sb.AppendLine(new string(' ', 4) + $"public partial class {entityName}Configuration : IEntityTypeConfiguration<{entityName}>");
                 _sb.AppendLine(new string(' ', 4) + "{");
                 _sb.AppendLine(new string(' ', 8) + $"public void Configure(EntityTypeBuilder<{entityName}> {entityParameterName})");
                 _sb.AppendLine(new string(' ', 8) + "{");
                 _sb.AppendLine(new string(' ', 12) + statements);
+                _sb.AppendLine();
+                _sb.AppendLine(new string(' ', 12) + "OnConfigurePartial(entity);");
                 _sb.AppendLine(new string(' ', 8) + "}");
+                _sb.AppendLine();
+                _sb.AppendLine(new string(' ', 8) + $"partial void OnConfigurePartial(EntityTypeBuilder<{entityName}> entity);");
                 _sb.AppendLine(new string(' ', 4) + "}");
                 _sb.AppendLine("}");
 
@@ -88,12 +97,20 @@ namespace ReverseEngineer20.ReverseEngineer
 
                 result.Add(configurationFilePath);
 
-                configurationLines.Add( $"{new string(' ', 12)}modelBuilder.ApplyConfiguration(new {entityName}Configuration());");
+                configurationLines.Add($"{new string(' ', 12)}modelBuilder.ApplyConfiguration(new {entityName}Configuration());");
             }
 
-            var sourceLines = File.ReadAllLines(dbContextFilePath, Encoding.UTF8);
+            var finalSource = BuildDbContext(configurationNamespace, configurationLines, File.ReadAllLines(dbContextFilePath, Encoding.UTF8));
 
+            File.WriteAllLines(dbContextFilePath, finalSource, Encoding.UTF8);
+
+            return result;
+        }
+
+        private static List<string> BuildDbContext(string configurationNamespace, List<string> configurationLines, string[] sourceLines)
+        {
             var finalSource = new List<string>();
+            var usings = new List<string>();
             var inEntityBuilder = false;
             var configLinesWritten = false;
             string prevLine = null;
@@ -105,7 +122,7 @@ namespace ReverseEngineer20.ReverseEngineer
                     continue;
                 }
 
-                if (line.Trim().StartsWith("modelBuilder.Entity<"))
+                if (line.Trim().StartsWith("modelBuilder.Entity<", StringComparison.InvariantCulture))
                 {
                     inEntityBuilder = true;
                     if (!configLinesWritten)
@@ -113,6 +130,12 @@ namespace ReverseEngineer20.ReverseEngineer
                         finalSource.AddRange(configurationLines);
                         configLinesWritten = true;
                     }
+                    continue;
+                }
+
+                if (line.StartsWith("using ", StringComparison.InvariantCulture))
+                {
+                    usings.Add(line);
                     continue;
                 }
 
@@ -132,9 +155,12 @@ namespace ReverseEngineer20.ReverseEngineer
                 finalSource.Add(line);
             }
 
-            File.WriteAllLines(dbContextFilePath, finalSource, Encoding.UTF8);
+            usings.Add($"using {configurationNamespace};");
 
-            return result;
+            usings.Sort();
+
+            finalSource.InsertRange(1, usings);
+            return finalSource;
         }
     }
 }

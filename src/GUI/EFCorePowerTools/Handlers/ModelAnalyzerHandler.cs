@@ -1,10 +1,11 @@
 ﻿using EFCorePowerTools.Extensions;
+using EFCorePowerTools.Helpers;
 using EnvDTE;
-using ErikEJ.SqlCeToolbox.Helpers;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Threading;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -21,6 +22,8 @@ namespace EFCorePowerTools.Handlers
 
         public async System.Threading.Tasks.Task GenerateAsync(string outputPath, Project project, GenerationType generationType)
         {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
             try
             {
                 if (string.IsNullOrEmpty(outputPath))
@@ -34,34 +37,30 @@ namespace EFCorePowerTools.Handlers
                     return;
                 }
 
-                if (!project.Properties.Item("TargetFrameworkMoniker").Value.ToString().Contains(".NETFramework")
-                    && !project.IsNetCore())
+                if (!project.IsNetCore30OrHigher())
                 {
-                    EnvDteHelper.ShowError("Currently only .NET Framework and .NET Core projects are supported - TargetFrameworkMoniker: " + project.Properties.Item("TargetFrameworkMoniker").Value);
+                    EnvDteHelper.ShowError("Only .NET Core 3.0+ projects are supported - TargetFrameworkMoniker: " + project.Properties.Item("TargetFrameworkMoniker").Value);
                     return;
                 }
 
-                if (project.IsNetCore())
+                var result = await project.ContainsEfCoreDesignReferenceAsync();
+                if (string.IsNullOrEmpty(result.Item2))
                 {
-                    var result = await project.ContainsEfCoreDesignReferenceAsync();
-                    if (string.IsNullOrEmpty(result.Item2))
-                    {
-                        EnvDteHelper.ShowError("EF Core 2.1 or later not found in project");
-                        return;
-                    }
+                    EnvDteHelper.ShowError("EF Core 3.1 or later not found in project");
+                    return;
+                }
 
-                    if (!result.Item1)
+                if (!result.Item1)
+                {
+                    if (!Version.TryParse(result.Item2, out Version version))
                     {
-                        if (!Version.TryParse(result.Item2, out Version version))
-                        {
-                            EnvDteHelper.ShowError($"Cannot support version {result.Item2}, notice that previews have limited supported. You can try to manually install Microsoft.EntityFrameworkCore.Design preview.");
-                            return;
-                        }
-                        var nugetHelper = new NuGetHelper();
-                        nugetHelper.InstallPackage("Microsoft.EntityFrameworkCore.Design", project, version);
-                        EnvDteHelper.ShowError($"Installing EFCore.Design version {version}, please retry the command");
+                        EnvDteHelper.ShowError($"Cannot support version {result.Item2}, notice that previews have limited supported. You can try to manually install Microsoft.EntityFrameworkCore.Design preview.");
                         return;
                     }
+                    var nugetHelper = new NuGetHelper();
+                    nugetHelper.InstallPackage("Microsoft.EntityFrameworkCore.Design", project, version);
+                    EnvDteHelper.ShowError($"Installing EFCore.Design version {version}, please retry the command");
+                    return;
                 }
 
                 var processLauncher = new ProcessLauncher(project);
@@ -114,6 +113,8 @@ namespace EFCorePowerTools.Handlers
 
         private void GenerateDgml(List<Tuple<string, string>> modelResult, Project project)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             var dgmlBuilder = new DgmlBuilder.DgmlBuilder();
             ProjectItem item = null;
 

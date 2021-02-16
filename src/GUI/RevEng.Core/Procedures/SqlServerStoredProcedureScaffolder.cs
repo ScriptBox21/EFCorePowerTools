@@ -1,12 +1,11 @@
-﻿using EFCorePowerTools.Shared.Annotations;
+﻿using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Scaffolding;
-using RevEng.Core.Procedures.Model;
-using RevEng.Core.Procedures.Model.Metadata;
-using RevEng.Core.Procedures.Scaffolding;
-using ReverseEngineer20;
+using RevEng.Core.Abstractions;
+using RevEng.Core.Abstractions.Metadata;
+using RevEng.Shared;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,7 +20,8 @@ namespace RevEng.Core.Procedures
 {
     public class SqlServerStoredProcedureScaffolder : IProcedureScaffolder
     {
-        private readonly IProcedureModelFactory procedureModelFactory;
+        private const string parameterPrefix = "parameter";
+
         private readonly ICSharpHelper code;
 
         private static readonly ISet<SqlDbType> _scaleTypes = new HashSet<SqlDbType>
@@ -44,17 +44,16 @@ namespace RevEng.Core.Procedures
 
         private IndentedStringBuilder _sb;
 
-        public SqlServerStoredProcedureScaffolder(IProcedureModelFactory procedureModelFactory, [NotNull] ICSharpHelper code)
+        public SqlServerStoredProcedureScaffolder([NotNull] ICSharpHelper code)
         {
-            this.procedureModelFactory = procedureModelFactory;
             this.code = code;
         }
 
-        public ScaffoldedModel ScaffoldModel(string connectionString, ProcedureScaffolderOptions procedureScaffolderOptions, ProcedureModelFactoryOptions procedureModelFactoryOptions, ref List<string> errors)
+        public ScaffoldedModel ScaffoldModel(ProcedureModel model, ModuleScaffolderOptions procedureScaffolderOptions, ref List<string> errors)
         {
-            var result = new ScaffoldedModel();
+            if (model == null) throw new ArgumentNullException(nameof(model));
 
-            var model = procedureModelFactory.Create(connectionString, procedureModelFactoryOptions);
+            var result = new ScaffoldedModel();
 
             errors = model.Errors;
 
@@ -62,7 +61,7 @@ namespace RevEng.Core.Procedures
             {
                 var name = GenerateIdentifierName(procedure, model) + "Result";
 
-                var classContent = WriteResultClass(procedure, procedureScaffolderOptions.ModelNamespace, name);
+                var classContent = WriteResultClass(procedure, procedureScaffolderOptions, name);
 
                 result.AdditionalFiles.Add(new ScaffoldedFile
                 {
@@ -115,7 +114,7 @@ namespace RevEng.Core.Procedures
             return reader.ReadToEnd();
         }
 
-        private string WriteProcedureDbContext(ProcedureScaffolderOptions procedureScaffolderOptions, ProcedureModel model)
+        private string WriteProcedureDbContext(ModuleScaffolderOptions procedureScaffolderOptions, ProcedureModel model)
         {
             _sb = new IndentedStringBuilder();
 
@@ -124,7 +123,7 @@ namespace RevEng.Core.Procedures
             _sb.AppendLine("using Microsoft.EntityFrameworkCore;");
             _sb.AppendLine("using Microsoft.Data.SqlClient;");
             _sb.AppendLine("using System;");
-            _sb.AppendLine("using System.Data;");
+            _sb.AppendLine("using System.Threading;");
             _sb.AppendLine("using System.Threading.Tasks;");
             _sb.AppendLine($"using {procedureScaffolderOptions.ModelNamespace};");
 
@@ -134,8 +133,23 @@ namespace RevEng.Core.Procedures
 
             using (_sb.Indent())
             {
-                _sb.AppendLine($"public partial class {procedureScaffolderOptions.ContextName}Procedures");
+                _sb.AppendLine($"public static class {procedureScaffolderOptions.ContextName}ProceduresExtensions");
+                _sb.AppendLine("{");
+                
+                using (_sb.Indent())
+                {
+                    _sb.AppendLine($"public static {procedureScaffolderOptions.ContextName}Procedures GetProcedures(this {procedureScaffolderOptions.ContextName} context)");
+                    _sb.AppendLine("{");
+                    using (_sb.Indent())
+                    {
+                        _sb.AppendLine($"return new {procedureScaffolderOptions.ContextName}Procedures(context);");
+                    }
+                    _sb.AppendLine("}");
+                }
+                _sb.AppendLine("}");
+                _sb.AppendLine();
 
+                _sb.AppendLine($"public partial class {procedureScaffolderOptions.ContextName}Procedures");
                 _sb.AppendLine("{");
 
                 using (_sb.Indent())
@@ -171,11 +185,11 @@ namespace RevEng.Core.Procedures
             var paramStrings = procedure.Parameters.Where(p => !p.Output)
                 .Select(p => $"{code.Reference(p.ClrType())} {p.Name}");
 
-            var outParams = procedure.Parameters.Where(p => p.Output).ToList();
+            var allOutParams = procedure.Parameters.Where(p => p.Output).ToList();
 
-            var retValueName = outParams.Last().Name;
+            var outParams = allOutParams.SkipLast(1).ToList();
 
-            outParams.RemoveAt(outParams.Count - 1);
+            var retValueName = allOutParams.Last().Name;
 
             var outParamStrings = outParams
                 .Select(p => $"OutputParameter<{code.Reference(p.ClrType())}> {p.Name}")
@@ -191,33 +205,54 @@ namespace RevEng.Core.Procedures
             {
                 _sb.AppendLine();
 
-                _sb.AppendLine($"{line})");
+                _sb.AppendLine(line);
                 _sb.AppendLine("{");
 
                 using (_sb.Indent())
                 {
-                    foreach (var parameter in procedure.Parameters)
+                    foreach (var parameter in allOutParams)
                     {
-                        GenerateParameters(parameter);
+                        GenerateParameterVar(parameter);
                     }
 
-                    if (procedure.ResultElements.Count == 0)
+                    _sb.AppendLine();
+
+                    _sb.AppendLine("var sqlParameters = new []");
+                    _sb.AppendLine("{");
+                    using (_sb.Indent())
+                    {
+                        foreach (var parameter in procedure.Parameters)
+                        {
+                            if (parameter.Output)
+                            {
+                                _sb.Append($"{parameterPrefix}{parameter.Name}");
+                            }
+                            else
+                            {
+                                GenerateParameter(parameter);
+                            }
+                            _sb.AppendLine(",");
+                        }
+                    }
+                    _sb.AppendLine("};");
+
+                    if (procedure.HasValidResultSet && procedure.ResultElements.Count == 0)
                     {
                         _sb.AppendLine($"var _ = await _context.Database.ExecuteSqlRawAsync({fullExec});");
                     }
                     else
                     {
-                        _sb.AppendLine($"var _ = await _context.SqlQuery<{identifier}Result>({fullExec});");
+                        _sb.AppendLine($"var _ = await _context.SqlQueryAsync<{identifier}Result>({fullExec});");
                     }
 
                     _sb.AppendLine();
 
                     foreach (var parameter in outParams)
                     {
-                        _sb.AppendLine($"{parameter.Name}.SetValue(parameter{parameter.Name}.Value);");
+                        _sb.AppendLine($"{parameter.Name}.SetValue({parameterPrefix}{parameter.Name}.Value);");
                     }
 
-                    _sb.AppendLine($"{retValueName}?.SetValue(parameter{retValueName}.Value);");
+                    _sb.AppendLine($"{retValueName}?.SetValue({parameterPrefix}{retValueName}.Value);");
 
                     _sb.AppendLine();
 
@@ -231,29 +266,27 @@ namespace RevEng.Core.Procedures
         private static string GenerateProcedureStatement(Procedure procedure, string retValueName)
         {
             var paramNames = procedure.Parameters
-                .Select(p => $"parameter{p.Name}");
+                .Select(p => $"{parameterPrefix}{p.Name}");
 
             var paramList = procedure.Parameters
                 .Select(p => p.Output ? $"@{p.Name} OUTPUT" : $"@{p.Name}").ToList();
 
             paramList.RemoveAt(paramList.Count - 1);
 
-            var fullExec = $"\"EXEC @{retValueName} = [{procedure.Schema}].[{procedure.Name}] {string.Join(", ", paramList)}\", {string.Join(", ", paramNames)}".Replace(" \"", "\"");
+            var fullExec = $"\"EXEC @{retValueName} = [{procedure.Schema}].[{procedure.Name}] {string.Join(", ", paramList)}\", sqlParameters, cancellationToken".Replace(" \"", "\"");
             return fullExec;
         }
 
-        private static string GenerateMethodSignature(Procedure procedure, List<ProcedureParameter> outParams, IEnumerable<string> paramStrings, string retValueName, List<string> outParamStrings, string identifier)
+        private static string GenerateMethodSignature(Procedure procedure, List<ModuleParameter> outParams, IEnumerable<string> paramStrings, string retValueName, List<string> outParamStrings, string identifier)
         {
-            string line;
+            var returnType = $"Task<{identifier}Result[]>";
 
-            if (procedure.ResultElements.Count == 0)
+            if (procedure.HasValidResultSet && procedure.ResultElements.Count == 0)
             {
-                line = $"public async Task<int> {identifier}({string.Join(", ", paramStrings)}";
+                returnType = $"Task<int>";
             }
-            else
-            {
-                line = $"public async Task<{identifier}Result[]> {identifier}({string.Join(", ", paramStrings)}";
-            }
+
+            var line = $"public async {returnType} {identifier}Async({string.Join(", ", paramStrings)}";
 
             if (outParams.Count() > 0)
             {
@@ -271,13 +304,22 @@ namespace RevEng.Core.Procedures
             }
 
             line += $"OutputParameter<int> {retValueName} = null";
-            
+
+            line += ", CancellationToken cancellationToken = default)";
+
             return line;
         }
 
-        private void GenerateParameters(ProcedureParameter parameter)
+        private void GenerateParameterVar(ModuleParameter parameter)
         {
-            _sb.AppendLine($"var parameter{parameter.Name} = new SqlParameter");
+            _sb.Append($"var {parameterPrefix}{parameter.Name} = ");
+            GenerateParameter(parameter);
+            _sb.AppendLine(";");
+        }
+
+        private void GenerateParameter(ModuleParameter parameter)
+        {
+            _sb.AppendLine("new SqlParameter");
             _sb.AppendLine("{");
 
             var sqlDbType = parameter.DbType();
@@ -298,7 +340,7 @@ namespace RevEng.Core.Procedures
                     }
                 }
 
-                if (parameter.Length > 0 && _lengthRequiredTypes.Contains(sqlDbType))
+                if (_lengthRequiredTypes.Contains(sqlDbType))
                 {
                     _sb.AppendLine($"Size = {parameter.Length},");
                 }
@@ -321,26 +363,33 @@ namespace RevEng.Core.Procedures
                 }
             }
 
-            _sb.AppendLine("};");
-            _sb.AppendLine();
+            _sb.Append("}");
         }
 
-        private string WriteResultClass(Procedure storedProcedure, string @namespace, string name)
+        private string WriteResultClass(Procedure storedProcedure, ModuleScaffolderOptions options, string name)
         {
+            var @namespace = options.ModelNamespace;
+
             _sb = new IndentedStringBuilder();
 
             _sb.AppendLine(PathHelper.Header);
             _sb.AppendLine("using System;");
             _sb.AppendLine("using System.Collections.Generic;");
             _sb.AppendLine("using System.ComponentModel.DataAnnotations.Schema;");
-            
             _sb.AppendLine();
+
+            if (options.NullableReferences)
+            {
+                _sb.AppendLine("#nullable enable");
+                _sb.AppendLine();
+            }
+            
             _sb.AppendLine($"namespace {@namespace}");
             _sb.AppendLine("{");
 
             using (_sb.Indent())
             {
-                GenerateClass(storedProcedure, name);
+                GenerateClass(storedProcedure, name, options.NullableReferences);
             }
 
             _sb.AppendLine("}");
@@ -348,20 +397,20 @@ namespace RevEng.Core.Procedures
             return _sb.ToString();
         }
 
-        private void GenerateClass(Procedure storedProcedure, string name)
+        private void GenerateClass(Procedure storedProcedure, string name, bool nullableReferences)
         {
             _sb.AppendLine($"public partial class {name}");
             _sb.AppendLine("{");
 
             using (_sb.Indent())
             {
-                GenerateProperties(storedProcedure);
+                GenerateProperties(storedProcedure, nullableReferences);
             }
 
             _sb.AppendLine("}");
         }
 
-        private void GenerateProperties(Procedure storedProcedure)
+        private void GenerateProperties(Procedure storedProcedure, bool nullableReferences)
         {
             foreach (var property in storedProcedure.ResultElements.OrderBy(e => e.Ordinal))
             {
@@ -372,7 +421,23 @@ namespace RevEng.Core.Procedures
                     _sb.AppendLine(propertyNames.Item2);
                 }
 
-                _sb.AppendLine($"public {code.Reference(property.ClrType())} {propertyNames.Item1} {{ get; set; }}");
+                var propertyType = property.ClrType();
+                string nullableAnnotation = string.Empty;
+                string defaultAnnotation = string.Empty;
+
+                if (nullableReferences && !propertyType.IsValueType)
+                {
+                    if (property.Nullable)
+                    {
+                        nullableAnnotation = "?";
+                    }
+                    else
+                    {
+                        defaultAnnotation = $" = default!;";
+                    }
+                }
+
+                _sb.AppendLine($"public {code.Reference(propertyType)}{nullableAnnotation} {propertyNames.Item1} {{ get; set; }}{defaultAnnotation}");
             }
         }
 

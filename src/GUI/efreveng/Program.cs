@@ -1,8 +1,6 @@
-﻿using EFCorePowerTools.Shared.Models;
-using ReverseEngineer20;
-using ReverseEngineer20.ReverseEngineer;
+﻿using RevEng.Core;
+using RevEng.Shared;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,11 +17,6 @@ namespace efreveng
 
                 if (args.Length > 0)
                 {
-                    if (args[0].EndsWith(".dacpac", StringComparison.OrdinalIgnoreCase))
-                    { 
-                        return BuildDacpacList(args[0]);
-                    }
-
                     if ((args.Count() == 2 || args.Count() == 3) && int.TryParse(args[0], out int dbTypeInt))
                     {
                         SchemaInfo[] schemas = null;
@@ -33,13 +26,11 @@ namespace efreveng
                         }
                         var builder = new TableListBuilder(dbTypeInt, args[1], schemas);
 
-                        var value = builder.GetTableDefinitions();
+                        var buildResult = builder.GetTableModels();
 
-                        var buildResult = new List<TableInformationModel>();
-                        buildResult.AddRange(value.Select(v => new TableInformationModel(v.Item1, v.Item2)).ToList());
+                        buildResult.AddRange(builder.GetProcedures());
 
-                        var procedures = builder.GetProcedures(dbTypeInt);
-                        buildResult.AddRange(procedures.Select(p => new TableInformationModel(p, false, false, RevEng.Shared.ObjectType.Procedure)).ToList());
+                        buildResult.AddRange(builder.GetFunctions());
 
                         Console.Out.WriteLine("Result:");
                         Console.Out.WriteLine(buildResult.Write());
@@ -63,9 +54,7 @@ namespace efreveng
                         return 1;
                     }
 
-                    var runner = new ReverseEngineerRunner();
-
-                    var result = runner.GenerateFiles(options);
+                    var result = ReverseEngineerRunner.GenerateFiles(options);
 
                     Console.Out.WriteLine("Result:");
                     Console.Out.WriteLine(result.Write());
@@ -84,28 +73,6 @@ namespace efreveng
                 Console.Out.WriteLine(ex);
                 return 1;
             }
-        }
-
-        private static int BuildDacpacList(string dacpacPath)
-        {
-            if (!File.Exists(dacpacPath))
-            {
-                Console.Out.WriteLine("Error:");
-                Console.Out.WriteLine($"Could not open .dacpac file: {dacpacPath}");
-                return 1;
-            }
-
-            var builder = new DacpacTableListBuilder(dacpacPath);
-
-            var value = builder.GetTableDefinitions();
-
-            var result = new List<TableInformationModel>();
-            result.AddRange(value.Select(v => new TableInformationModel(v.Item1, v.Item2)).ToList());
-
-            Console.Out.WriteLine("Result:");
-            Console.Out.WriteLine(result.Write());
-
-            return 0;
         }
     }
 }

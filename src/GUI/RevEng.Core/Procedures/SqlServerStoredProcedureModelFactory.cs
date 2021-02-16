@@ -2,8 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
-using RevEng.Core.Procedures.Model;
-using RevEng.Core.Procedures.Model.Metadata;
+using RevEng.Core.Abstractions;
+using RevEng.Core.Abstractions.Metadata;
+using RevEng.Core.Abstractions.Model;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -11,7 +12,7 @@ using System.Linq;
 
 namespace RevEng.Core.Procedures
 {
-    class SqlServerStoredProcedureModelFactory : IProcedureModelFactory
+    public class SqlServerStoredProcedureModelFactory : IProcedureModelFactory
     {
         private readonly IDiagnosticsLogger<DbLoggerCategory.Scaffolding> _logger;
 
@@ -20,18 +21,18 @@ namespace RevEng.Core.Procedures
             _logger = logger;
         }
 
-        public ProcedureModel Create(string connectionString, ProcedureModelFactoryOptions options)
+        public ProcedureModel Create(string connectionString, ModuleModelFactoryOptions options)
         {
             return GetStoredProcedures(connectionString, options);
         }
 
-        private ProcedureModel GetStoredProcedures(string connectionString, ProcedureModelFactoryOptions options)
+        private ProcedureModel GetStoredProcedures(string connectionString, ModuleModelFactoryOptions options)
         {
-            var dtResult = new DataTable();
             var result = new List<Procedure>();
+            var found = new List<Tuple<string, string>>();
             var errors = new List<string>();
 
-            if (options.FullModel && !options.Procedures.Any())
+            if (options.FullModel && !options.Modules.Any())
             {
                 return new ProcedureModel
                 {
@@ -40,34 +41,38 @@ namespace RevEng.Core.Procedures
                 };
             }
 
+            var filter = options.Modules.ToHashSet();
+
             using (var connection = new SqlConnection(connectionString))
             {
-                string sql = $@"
-SELECT * FROM INFORMATION_SCHEMA.ROUTINES
+                var sql = $@"
+SELECT ROUTINE_SCHEMA, ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES
 WHERE ROUTINE_TYPE = 'PROCEDURE'
-ORDER BY ROUTINE_NAME";
+ORDER BY ROUTINE_NAME;";
 
-                connection.Open();
-
-                var adapter = new SqlDataAdapter
+                using (var command = new SqlCommand(sql, connection))
                 {
-                    SelectCommand = new SqlCommand(sql, connection)
-                };
+                    connection.Open();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            found.Add(new Tuple<string, string>(reader.GetString(0), reader.GetString(1)));
+                        }
+                    }
+                }
 
-                adapter.Fill(dtResult);
-
-                var filter = options.Procedures.ToHashSet();
-
-                foreach (DataRow row in dtResult.Rows)
+                foreach (var foundProcedure in found)
                 {
-                    var procedure = new Procedure
+                    if (filter.Count == 0 || filter.Contains($"[{foundProcedure.Item1}].[{foundProcedure.Item2}]"))
                     {
-                        Schema = row["ROUTINE_SCHEMA"].ToString(),
-                        Name = row["ROUTINE_NAME"].ToString()
-                    };
+                        var procedure = new Procedure
+                        {
+                            Schema = foundProcedure.Item1,
+                            Name = foundProcedure.Item2,
+                            HasValidResultSet = true,
+                        };
 
-                    if (filter.Count == 0 || filter.Contains($"[{procedure.Schema}].[{procedure.Name}]"))
-                    {
                         if (options.FullModel)
                         {
                             procedure.Parameters = GetStoredProcedureParameters(connection, procedure.Schema, procedure.Name);
@@ -77,8 +82,9 @@ ORDER BY ROUTINE_NAME";
                             }
                             catch (Exception ex)
                             {
-                                errors.Add($"Unable to get result set shape for {procedure.Schema}.{procedure.Name}" + Environment.NewLine + ex.Message);
-                                _logger?.Logger.LogWarning(ex, $"Unable to scaffold {row["ROUTINE_NAME"]}");
+                                procedure.HasValidResultSet = false;
+                                errors.Add($"Unable to get result set shape for procedure '{procedure.Schema}.{procedure.Name}'{Environment.NewLine}{ex.Message}{Environment.NewLine}");
+                                _logger?.Logger.LogWarning(ex, $"Unable to scaffold {procedure.Schema}.{procedure.Name}");
                             }
                         }
 
@@ -94,30 +100,31 @@ ORDER BY ROUTINE_NAME";
             };
         }
 
-        private List<ProcedureParameter> GetStoredProcedureParameters(SqlConnection connection, string schema, string name)
+        private List<ModuleParameter> GetStoredProcedureParameters(SqlConnection connection, string schema, string name)
         {
             var dtResult = new DataTable();
-            var result = new List<ProcedureParameter>();
+            var result = new List<ModuleParameter>();
 
             // Validate this - based on https://stackoverflow.com/questions/20115881/how-to-get-stored-procedure-parameters-details/41330791
 
             var sql = $@"
 SELECT  
-    'Parameter' = name,  
-    'Type'   = type_name(system_type_id),  
-    'Length'   = CAST(max_length AS INT),  
-    'Precision'   = CAST(case when type_name(system_type_id) = 'uniqueidentifier' 
-                then precision  
-                else OdbcPrec(system_type_id, max_length, precision) end AS INT),  
-    'Scale'   = CAST(OdbcScale(system_type_id, scale) AS INT),  
+    'Parameter' = p.name,  
+    'Type'   = type_name(p.system_type_id),  
+    'Length'   = CAST(p.max_length AS INT),  
+    'Precision'   = CAST(case when type_name(p.system_type_id) = 'uniqueidentifier' 
+                then p.precision  
+                else OdbcPrec(p.system_type_id, p.max_length, p.precision) end AS INT),  
+    'Scale'   = CAST(OdbcScale(p.system_type_id, p.scale) AS INT),  
     'Order'  = CAST(parameter_id AS INT),  
     'Collation'   = convert(sysname, 
-                    case when system_type_id in (35, 99, 167, 175, 231, 239)  
+                    case when p.system_type_id in (35, 99, 167, 175, 231, 239)  
                     then ServerProperty('collation') end),
-    is_output AS output,
-	is_nullable AS nullable,
-    'TypeName' = QUOTENAME(OBJECT_SCHEMA_NAME(object_id)) + '.' + QUOTENAME(TYPE_NAME(user_type_id))
-    from sys.parameters where object_id = object_id('{schema}.{name}')
+    p.is_output AS output,
+    'TypeName' = QUOTENAME(SCHEMA_NAME(t.schema_id)) + '.' + QUOTENAME(TYPE_NAME(p.user_type_id))
+    from sys.parameters p
+	LEFT JOIN sys.table_types t ON t.user_type_id = p.user_type_id
+    where object_id = object_id('{schema}.{name}')
     ORDER BY parameter_id;";
 
             var adapter = new SqlDataAdapter
@@ -129,15 +136,21 @@ SELECT
 
             foreach (DataRow par in dtResult.Rows)
             {
-                var parameter = new ProcedureParameter()
+                var parameterName = par["Parameter"].ToString();
+                if (parameterName.StartsWith("@", StringComparison.Ordinal))
                 {
-                    Name = par["Parameter"].ToString().Replace("@", ""),
+                    parameterName = parameterName.Substring(1);
+                }
+
+                var parameter = new ModuleParameter()
+                {
+                    Name = parameterName,
                     StoreType = par["Type"].ToString(),
                     Length = par["Length"].GetType() == typeof(DBNull) ? (int?)null : int.Parse(par["Length"].ToString()),
                     Precision = par["Precision"].GetType() == typeof(DBNull) ? (int?)null : int.Parse(par["Precision"].ToString()),
                     Scale = par["Scale"].GetType() == typeof(DBNull) ? (int?)null : int.Parse(par["Scale"].ToString()),
                     Output = (bool)par["output"],
-                    Nullable = (bool)par["nullable"],
+                    Nullable = true,
                     TypeName = par["TypeName"].ToString(),
                 };
 
@@ -145,7 +158,7 @@ SELECT
             }
 
             // Add parameter to hold the standard return value
-            result.Add(new ProcedureParameter()
+            result.Add(new ModuleParameter()
             {
                 Name = "returnValue",
                 StoreType = "int",

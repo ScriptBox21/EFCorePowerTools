@@ -1,0 +1,42 @@
+﻿[
+   {
+      "SchemaName": "dbo",
+      "Tables": [
+         {
+            "Columns": [
+               {
+                  "Name": "Picture",
+                  "NewName": "Image"
+               }
+            ],
+            "Name": "Categories",
+            "Navigations": [ ],
+            "NewName": "Categories"
+         },
+         {
+            "Columns": [ ],
+            "Name": "Orders",
+            "Navigations": [
+               {
+                  "Name": "ShipVia",
+                  "NewName": "ShipBy"
+               }
+            ],
+            "NewName": "Orders"
+         }
+      ],
+      "UseSchemaName": false
+   },
+   {
+      "SchemaName": "dev",
+      "UseSchemaName": true
+   },
+   {
+      "SchemaName": "test",
+      "UseSchemaName": true
+   },
+   {
+      "SchemaName": "prod",
+      "UseSchemaName": true
+   }
+]

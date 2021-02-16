@@ -1,12 +1,12 @@
 ﻿namespace EFCorePowerTools.Contracts.Views
 {
     using System.Collections.Generic;
-    using Shared.Models;
+    using RevEng.Shared;
 
-    public interface IPickTablesDialog : IDialog<TableInformationModel[]>
+    public interface IPickTablesDialog : IDialog<PickTablesDialogResult>
     {
-        IPickTablesDialog AddTables(IEnumerable<TableInformationModel> tables);
+        IPickTablesDialog AddTables(IEnumerable<TableModel> tables, IEnumerable<Schema> customReplacers);
 
-        IPickTablesDialog PreselectTables(IEnumerable<TableInformationModel> tables);
+        IPickTablesDialog PreselectTables(IEnumerable<SerializationTableModel> tables);
     }
 }

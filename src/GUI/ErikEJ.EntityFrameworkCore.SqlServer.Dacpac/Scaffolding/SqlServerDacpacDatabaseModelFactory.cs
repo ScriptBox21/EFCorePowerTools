@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
+using GOEddie.Dacpac.References;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -11,7 +12,6 @@ using Microsoft.EntityFrameworkCore.Scaffolding;
 using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
 using Microsoft.SqlServer.Dac.Extensions.Prototype;
 using Microsoft.SqlServer.Dac.Model;
-using ReverseEngineer20.DacpacConsolidate;
 
 namespace ErikEJ.EntityFrameworkCore.SqlServer.Scaffolding
 {
@@ -55,8 +55,6 @@ namespace ErikEJ.EntityFrameworkCore.SqlServer.Scaffolding
             };
 
             dbModel["Scaffolding:ConnectionString"] = $"Data Source=(local);Initial Catalog={dbModel.DatabaseName};Integrated Security=true";
-
-            //Sequences not created - not needed for scaffolding
 
             var consolidator = new DacpacConsolidator();
             dacpacPath = consolidator.Consolidate(dacpacPath);
@@ -113,7 +111,7 @@ namespace ErikEJ.EntityFrameworkCore.SqlServer.Scaffolding
 
             foreach (var view in views)
             {
-                var dbView = new DatabaseTable
+                var dbView = new DatabaseView
                 {
                     Name = view.Name.Parts[1],
                     Schema = view.Name.Parts[0],

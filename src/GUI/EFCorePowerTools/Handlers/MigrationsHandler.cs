@@ -1,6 +1,5 @@
 ﻿using EFCorePowerTools.Extensions;
 using EnvDTE;
-using ErikEJ.SqlCeToolbox.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +7,8 @@ using System.IO;
 namespace EFCorePowerTools.Handlers
 {
     using Contracts.Views;
+    using EFCorePowerTools.Helpers;
+    using Microsoft.VisualStudio.Shell;
 
     internal class MigrationsHandler
     {
@@ -20,6 +21,8 @@ namespace EFCorePowerTools.Handlers
 
         public async System.Threading.Tasks.Task ManageMigrationsAsync(string outputPath, Project project)
         {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
             try
             {
                 if (string.IsNullOrEmpty(outputPath))
@@ -38,44 +41,32 @@ namespace EFCorePowerTools.Handlers
                     return;
                 }
 
-                if (!project.Properties.Item("TargetFrameworkMoniker").Value.ToString().Contains(".NETFramework")
-                    && !project.IsNetCore())
+                if (!project.IsNetCore30OrHigher())
                 {
-                    EnvDteHelper.ShowError("Currently only .NET Framework and .NET Core 2.0 projects are supported - TargetFrameworkMoniker: " + project.Properties.Item("TargetFrameworkMoniker").Value);
+                    EnvDteHelper.ShowError("Only .NET Core 3.0+ projects are supported - TargetFrameworkMoniker: " + project.Properties.Item("TargetFrameworkMoniker").Value);
                     return;
                 }
 
-                var outputFolder = Path.GetDirectoryName(outputPath);
+                var result = await project.ContainsEfCoreDesignReferenceAsync();
 
-                if (!project.IsNetCore() && !File.Exists(Path.Combine(outputFolder, "Microsoft.EntityFrameworkCore.dll")))
+                if (string.IsNullOrEmpty(result.Item2))
                 {
-                    EnvDteHelper.ShowError("EF Core is not installed in the current project");
+                    EnvDteHelper.ShowError("EF Core 3.1 or later not found in project");
                     return;
                 }
 
-                if (project.IsNetCore())
+                if (!result.Item1)
                 {
-                    var result = await project.ContainsEfCoreDesignReferenceAsync();
-
-                    if (string.IsNullOrEmpty(result.Item2))
+                    if (!Version.TryParse(result.Item2, out Version version))
                     {
-                        EnvDteHelper.ShowError("EF Core 2.1 or later not found in project");
+                        EnvDteHelper.ShowError($"Cannot support version {version}, notice that previews are not supported.");
                         return;
                     }
-
-                    if (!result.Item1)
-                    {
-                        if (!Version.TryParse(result.Item2, out Version version))
-                        {
-                            EnvDteHelper.ShowError($"Cannot support version {version}, notice that previews are not supported.");
-                            return;
-                        }
-                        var nugetHelper = new NuGetHelper();
-                        nugetHelper.InstallPackage("Microsoft.EntityFrameworkCore.Design", project, version);
-                        EnvDteHelper.ShowError($"Installing EFCore.Design version {version}, please retry the command");
-                        return;
-                    }
-                }                
+                    var nugetHelper = new NuGetHelper();
+                    nugetHelper.InstallPackage("Microsoft.EntityFrameworkCore.Design", project, version);
+                    EnvDteHelper.ShowError($"Installing EFCore.Design version {version}, please retry the command");
+                    return;
+                }
 
                 var migrationsDialog = _package.GetView<IMigrationOptionsDialog>();
                 migrationsDialog.UseProjectForMigration(project)

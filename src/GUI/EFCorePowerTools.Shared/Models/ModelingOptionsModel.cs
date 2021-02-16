@@ -1,8 +1,8 @@
 ﻿namespace EFCorePowerTools.Shared.Models
 {
+    using JetBrains.Annotations;
     using System.ComponentModel;
     using System.Runtime.CompilerServices;
-    using Annotations;
 
     /// <summary>
     /// A model holding the data of EF Core modeling options.
@@ -29,6 +29,10 @@
         private bool _mapSpatialTypes;
         private bool _mapNodaTimeTypes;
         private bool _useEf6Pluralizer;
+        private bool _useBoolPropertiesWithoutDefaultSql;
+        private bool _useNullableReferences;
+        private bool _useNoConstructor;
+        private bool _useNoNavigations;
 
         public bool UseDataAnnotations
         {
@@ -246,6 +250,50 @@
             {
                 if (value == _useEf6Pluralizer) return;
                 _useEf6Pluralizer = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool UseBoolPropertiesWithoutDefaultSql
+        {
+            get => _useBoolPropertiesWithoutDefaultSql;
+            set
+            {
+                if (value == _useBoolPropertiesWithoutDefaultSql) return;
+                _useBoolPropertiesWithoutDefaultSql = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool UseNullableReferences
+        {
+            get => _useNullableReferences;
+            set
+            {
+                if (value == _useNullableReferences) return;
+                _useNullableReferences = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool UseNoConstructor
+        {
+            get => _useNoConstructor;
+            set
+            {
+                if (value == _useNoConstructor) return;
+                _useNoConstructor = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool UseNoNavigations
+        {
+            get => _useNoNavigations;
+            set
+            {
+                if (value == _useNoNavigations) return;
+                _useNoNavigations = value;
                 OnPropertyChanged();
             }
         }

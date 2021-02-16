@@ -2,6 +2,7 @@
 using EFCorePowerTools.Helpers;
 using EFCorePowerTools.Shared.Models;
 using NUnit.Framework;
+using RevEng.Shared;
 
 namespace UnitTests
 {
@@ -14,12 +15,12 @@ namespace UnitTests
         public void CanParseTables()
         {
             // Arrange
-            var tables = new List<TableInformationModel>
+            var tables = new List<SerializationTableModel>
             {
-                new TableInformationModel("dbo.table", true),
-                new TableInformationModel("dbo.table.crazy", false),
-                new TableInformationModel("[dbo].[table]", true),
-                new TableInformationModel("[dbo].[table.mad]", true),
+                new SerializationTableModel("dbo.table", ObjectType.Table, null),
+                new SerializationTableModel("dbo.table.crazy", ObjectType.Table, null),
+                new SerializationTableModel("[dbo].[table]", ObjectType.Table, null),
+                new SerializationTableModel("[dbo].[table.mad]", ObjectType.Table, null),
             };
 
             // Act
@@ -37,13 +38,13 @@ namespace UnitTests
         public void CanSkipTables()
         {
             // Arrange
-            var tables = new List<TableInformationModel>
+            var tables = new List<SerializationTableModel>
             {
-                new TableInformationModel("dbo.table", true),
-                new TableInformationModel("dbo.table.crazy", false),
-                new TableInformationModel("[dbo].[table]", true),
-                new TableInformationModel("[dbo].[table.mad]", true),
-                new TableInformationModel("table", true),
+                new SerializationTableModel("dbo.table", ObjectType.Table, null),
+                new SerializationTableModel("dbo.table.crazy", ObjectType.Table, null),
+                new SerializationTableModel("[dbo].[table]", ObjectType.Table, null),
+                new SerializationTableModel("[dbo].[table.mad]", ObjectType.Table, null),
+                new SerializationTableModel("table", ObjectType.Table, null),
             };
 
             // Act

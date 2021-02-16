@@ -1,6 +1,4 @@
-﻿using EFCorePowerTools.Shared.Models;
-using ReverseEngineer20;
-using ReverseEngineer20.ReverseEngineer;
+﻿using RevEng.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +21,7 @@ namespace EFCorePowerTools.Handlers.ReverseEngineer
         public string ContextNamespace { get; set; }
         public bool UseFluentApiOnly { get; set; }
         public string ContextClassName { get; set; }
-        public List<TableInformationModel> Tables { get; set; }
+        public List<SerializationTableModel> Tables { get; set; }
         public bool UseDatabaseNames { get; set; }
         public bool UseInflector { get; set; }
         public bool UseHandleBars { get; set; }
@@ -40,6 +38,12 @@ namespace EFCorePowerTools.Handlers.ReverseEngineer
         public bool UseDbContextSplitting { get; set; }
         public bool UseNodaTime { get; set; }
         public bool FilterSchemas { get; set; }
+        public bool UseBoolPropertiesWithoutDefaultSql { get; set; }
+        public bool UseNullableReferences { get; set; }
+        public bool UseNoConstructor { get; set; }
+        public bool UseNoNavigations { get; set; }
+        public CodeGenerationMode CodeGenerationMode { get; set; }
+        public string UiHint { get; set; }
         public List<SchemaInfo> Schemas { get; set; }
 
         public static ReverseEngineerOptions FromV1(ReverseEngineerOptionsV1 v1)
@@ -57,7 +61,7 @@ namespace EFCorePowerTools.Handlers.ReverseEngineer
                 UseFluentApiOnly = v1.UseFluentApiOnly,
                 ContextClassName = v1.ContextClassName,
                 Tables = v1.Tables
-                           .Select(m => new TableInformationModel(m, true, false))
+                           .Select(m => new SerializationTableModel(m, RevEng.Shared.ObjectType.Table, null))
                            .ToList(),
                 UseDatabaseNames = v1.UseDatabaseNames,
                 UseInflector = v1.UseInflector,

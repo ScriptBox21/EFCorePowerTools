@@ -2,11 +2,11 @@
 
 Reverse engineering, model visualization and migrations UI for EF Core.
 
-Hopes to lower the bar for getting started with EF Core, by providing GUI based assistance with reverse engineering of an existing database, creating migrations and visualizing your DbContext model.
+Aims to lower the bar for getting started with EF Core, by providing GUI based assistance with reverse engineering of an existing database, creating migrations and visualizing your DbContext model.
 
 [![Visual Studio Marketplace Version](https://vsmarketplacebadge.apphb.com/version/ErikEJ.EFCorePowerTools.svg)](https://marketplace.visualstudio.com/items?itemName=ErikEJ.EFCorePowerTools) [![Twitter Follow](https://img.shields.io/twitter/follow/ErikEJ.svg?style=social&label=Follow)](https://twitter.com/ErikEJ) 
 
-[![Demo at EF Core Community Standup](https://img.youtube.com/vi/OWuP_qOYwsk/1.jpg)](https://www.youtube.com/watch?v=OWuP_qOYwsk "Demo")
+[![Demo at EF Core Community Standup](https://img.youtube.com/vi/uph-AGyOd8c/2.jpg)](https://youtu.be/uph-AGyOd8c "Demo")
 
 [EF Core Power Tools presentation](https://erikej.github.io/EFCorePowerTools/index.html)
 
