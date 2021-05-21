@@ -1,7 +1,7 @@
-﻿using dac = Microsoft.SqlServer.Dac.Model;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using dac = Microsoft.SqlServer.Dac.Model;
 
 namespace SqlSharpener.Model
 {
@@ -72,10 +72,6 @@ namespace SqlSharpener.Model
                         {
                             var tSqlObjectReferenced = referenced[0];
                             SetProperties(tSqlObjectReferenced);
-                        }
-                        else
-                        {
-                            // TODO: how to get and evaluate the expression?
                         }
                         break;
                 }

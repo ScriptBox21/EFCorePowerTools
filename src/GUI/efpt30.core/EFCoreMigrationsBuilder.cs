@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Design.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
-#if CORE50
+#if CORE50 || CORE60
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
@@ -55,7 +55,7 @@ namespace Modelling
                     var dbContext = operations.CreateContext(type.Name);
                     if (scriptMigration)
                     {
-                        result.Add(new Tuple<string, string>(type.Name,  ScriptMigration(dbContext, outputPath, startupOutputPath)));
+                        result.Add(new Tuple<string, string>(type.Name, ScriptMigration(dbContext, outputPath, startupOutputPath)));
                     }
                     else
                     {
@@ -78,16 +78,8 @@ namespace Modelling
 
             foreach (var type in types)
             {
-                try
-                {
-                    var dbContext = operations.CreateContext(type.Name);
-                    result.Add(new Tuple<string, string>(type.Name, GetMigrationStatus(dbContext)));
-                }
-                catch (InvalidOperationException ex)
-                {
-                    Console.Error.WriteLine(ex);
-                    continue;
-                }
+                var dbContext = operations.CreateContext(type.Name);
+                result.Add(new Tuple<string, string>(type.Name, GetMigrationStatus(dbContext)));
             }
             return result;
         }
@@ -104,10 +96,9 @@ namespace Modelling
             var migrationsAssembly = context.GetService<IMigrationsAssembly>();
             var modelDiffer = context.GetService<IMigrationsModelDiffer>();
 #if CORE50
+            var hasDifferences = false;
             var dependencies = context.GetService<ProviderConventionSetBuilderDependencies>();
             var relationalDependencies = context.GetService<RelationalConventionSetBuilderDependencies>();
-
-            var hasDifferences = false;
 
             if (migrationsAssembly.ModelSnapshot != null)
             {
@@ -122,6 +113,29 @@ namespace Modelling
                     context.Model.GetRelationalModel());
             }
 
+            var pendingModelChanges = (!databaseExists || hasDifferences);
+#elif CORE60
+            var hasDifferences = false;
+            if (migrationsAssembly.ModelSnapshot != null)
+            {
+                var snapshotModel = migrationsAssembly.ModelSnapshot?.Model;
+
+                if (snapshotModel is IMutableModel mutableModel)
+                {
+                    snapshotModel = mutableModel.FinalizeModel();
+                }
+
+                if (snapshotModel != null)
+                {
+                    snapshotModel = context.GetService<IModelRuntimeInitializer>().Initialize(snapshotModel, null);
+
+                    //TODO 6.0 preview 4!
+                    //hasDifferences = context.GetService<IMigrationsModelDiffer>().HasDifferences(
+                    //snapshotModel.GetRelationalModel(),
+                    //context.GetService<IDesignTimeModel>().Model.GetRelationalModel());
+                    hasDifferences = modelDiffer.HasDifferences(snapshotModel.GetRelationalModel(), context.Model.GetRelationalModel());
+                }
+            }
             var pendingModelChanges = (!databaseExists || hasDifferences);
 #else
             var pendingModelChanges
@@ -154,7 +168,7 @@ namespace Modelling
             EnsureServices(services);
 
             var migrator = services.GetRequiredService<IMigrator>();
-#if CORE50
+#if CORE50 || CORE60
             return migrator.GenerateScript(null, null, MigrationsSqlGenerationOptions.Idempotent);
 #else
             return migrator.GenerateScript(null, null, idempotent: true);

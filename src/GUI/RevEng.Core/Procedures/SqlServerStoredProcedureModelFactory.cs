@@ -32,15 +32,6 @@ namespace RevEng.Core.Procedures
             var found = new List<Tuple<string, string>>();
             var errors = new List<string>();
 
-            if (options.FullModel && !options.Modules.Any())
-            {
-                return new ProcedureModel
-                {
-                    Procedures = result,
-                    Errors = errors,
-                };
-            }
-
             var filter = options.Modules.ToHashSet();
 
             using (var connection = new SqlConnection(connectionString))
@@ -48,6 +39,7 @@ namespace RevEng.Core.Procedures
                 var sql = $@"
 SELECT ROUTINE_SCHEMA, ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES
 WHERE ROUTINE_TYPE = 'PROCEDURE'
+AND NULLIF(ROUTINE_NAME, '') IS NOT NULL
 ORDER BY ROUTINE_NAME;";
 
                 using (var command = new SqlCommand(sql, connection))
@@ -110,7 +102,7 @@ ORDER BY ROUTINE_NAME;";
             var sql = $@"
 SELECT  
     'Parameter' = p.name,  
-    'Type'   = type_name(p.system_type_id),  
+    'Type'   = COALESCE(type_name(p.system_type_id), type_name(p.user_type_id)),  
     'Length'   = CAST(p.max_length AS INT),  
     'Precision'   = CAST(case when type_name(p.system_type_id) = 'uniqueidentifier' 
                 then p.precision  
@@ -190,7 +182,7 @@ SELECT
                 var parameter = new ProcedureResultElement()
                 {
                     Name = string.IsNullOrEmpty(res["name"].ToString()) ? $"Col{rCounter}" : res["name"].ToString(),
-                    StoreType = res["system_type_name"].ToString(),
+                    StoreType = string.IsNullOrEmpty(res["system_type_name"].ToString()) ? res["user_type_name"].ToString() : res["system_type_name"].ToString(),
                     Ordinal = int.Parse(res["column_ordinal"].ToString()),
                     Nullable = (bool)res["is_nullable"],
                 };

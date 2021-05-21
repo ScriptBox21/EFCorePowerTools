@@ -2,12 +2,7 @@
 using Microsoft.EntityFrameworkCore.Design.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Scaffolding;
-using Microsoft.EntityFrameworkCore.Scaffolding.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using RevEng.Core.Abstractions;
-using RevEng.Core.Abstractions.Model;
-using RevEng.Core.Functions;
-using RevEng.Core.Procedures;
 using RevEng.Shared;
 using System;
 using System.Collections.Generic;
@@ -19,7 +14,7 @@ namespace RevEng.Core
 {
     public class ReverseEngineerRunner
     {
-        public static ReverseEngineerResult GenerateFiles(ReverseEngineerCommandOptions reverseEngineerOptions)
+        public static ReverseEngineerResult GenerateFiles(ReverseEngineerCommandOptions options)
         {
             var errors = new List<string>();
             var warnings = new List<string>();
@@ -27,166 +22,132 @@ namespace RevEng.Core
                 new OperationReportHandler(
                     m => errors.Add(m),
                     m => warnings.Add(m)));
-            var serviceProvider = ServiceProviderBuilder.Build(reverseEngineerOptions);
+            var serviceProvider = ServiceProviderBuilder.Build(options);
             var scaffolder = serviceProvider.GetService<IReverseEngineerScaffolder>();
             var schemas = new List<string>();
 
-            reverseEngineerOptions.ConnectionString = SqlServerHelper.SetConnectionString(reverseEngineerOptions.DatabaseType, reverseEngineerOptions.ConnectionString); 
+            options.ConnectionString = SqlServerHelper.SetConnectionString(options.DatabaseType, options.ConnectionString);
 
-            if (reverseEngineerOptions.DefaultDacpacSchema != null)
+            if (options.DefaultDacpacSchema != null)
             {
-                schemas.Add(reverseEngineerOptions.DefaultDacpacSchema);
+                schemas.Add(options.DefaultDacpacSchema);
             }
 
-            if (reverseEngineerOptions.FilterSchemas)
+            if (options.FilterSchemas)
             {
-                schemas.AddRange(reverseEngineerOptions.Schemas.Select(s => s.Name));
+                schemas.AddRange(options.Schemas.Select(s => s.Name));
             }
 
-            var outputDir = !string.IsNullOrEmpty(reverseEngineerOptions.OutputPath)
-               ? Path.IsPathFullyQualified(reverseEngineerOptions.OutputPath)
-                    ? reverseEngineerOptions.OutputPath
-                    : Path.GetFullPath(Path.Combine(reverseEngineerOptions.ProjectPath, reverseEngineerOptions.OutputPath))
-                : reverseEngineerOptions.ProjectPath;
+            if (options.UseNoObjectFilter)
+            {
+                options.Tables = new List<SerializationTableModel>();
+            }
 
-            var outputContextDir = !string.IsNullOrEmpty(reverseEngineerOptions.OutputContextPath)
-               ? Path.IsPathFullyQualified(reverseEngineerOptions.OutputContextPath)
-                    ? reverseEngineerOptions.OutputContextPath
-                    : Path.GetFullPath(Path.Combine(reverseEngineerOptions.ProjectPath, reverseEngineerOptions.OutputContextPath))
+            var outputDir = !string.IsNullOrEmpty(options.OutputPath)
+               ? Path.IsPathFullyQualified(options.OutputPath)
+                    ? options.OutputPath
+                    : Path.GetFullPath(Path.Combine(options.ProjectPath, options.OutputPath))
+                : options.ProjectPath;
+
+            var outputContextDir = !string.IsNullOrEmpty(options.OutputContextPath)
+               ? Path.IsPathFullyQualified(options.OutputContextPath)
+                    ? options.OutputContextPath
+                    : Path.GetFullPath(Path.Combine(options.ProjectPath, options.OutputContextPath))
                 : outputDir;
 
-            var modelNamespace = !string.IsNullOrEmpty(reverseEngineerOptions.ModelNamespace)
-                ? reverseEngineerOptions.ProjectRootNamespace + "." + reverseEngineerOptions.ModelNamespace
-                : PathHelper.GetNamespaceFromOutputPath(outputDir, reverseEngineerOptions.ProjectPath, reverseEngineerOptions.ProjectRootNamespace);
+            var modelNamespace = string.Empty;
+            var contextNamespace = string.Empty;
 
-            var contextNamespace = !string.IsNullOrEmpty(reverseEngineerOptions.ContextNamespace)
-                ? reverseEngineerOptions.ProjectRootNamespace + "." + reverseEngineerOptions.ContextNamespace
-                : PathHelper.GetNamespaceFromOutputPath(outputContextDir, reverseEngineerOptions.ProjectPath, reverseEngineerOptions.ProjectRootNamespace);
+            if (string.IsNullOrEmpty(options.ProjectRootNamespace))
+            {
+                modelNamespace = !string.IsNullOrEmpty(options.ModelNamespace)
+                    ? options.ModelNamespace
+                    : PathHelper.GetNamespaceFromOutputPath(outputDir, options.ProjectPath, options.ProjectRootNamespace);
 
+                contextNamespace = !string.IsNullOrEmpty(options.ContextNamespace)
+                    ? options.ContextNamespace
+                    : PathHelper.GetNamespaceFromOutputPath(outputContextDir, options.ProjectPath, options.ProjectRootNamespace);
+            }
+            else
+            {
+                modelNamespace = !string.IsNullOrEmpty(options.ModelNamespace)
+                    ? options.ProjectRootNamespace + "." + options.ModelNamespace
+                    : PathHelper.GetNamespaceFromOutputPath(outputDir, options.ProjectPath, options.ProjectRootNamespace);
+
+                contextNamespace = !string.IsNullOrEmpty(options.ContextNamespace)
+                    ? options.ProjectRootNamespace + "." + options.ContextNamespace
+                    : PathHelper.GetNamespaceFromOutputPath(outputContextDir, options.ProjectPath, options.ProjectRootNamespace);
+            }
+
+            var entityTypeConfigurationPaths = new List<string>();
             SavedModelFiles procedurePaths = null;
-            var procedureModelScaffolder = serviceProvider.GetService<IProcedureScaffolder>();
-            if (procedureModelScaffolder != null
-                && reverseEngineerOptions.Tables.Any(t => t.ObjectType == ObjectType.Procedure))
-            {
-                var procedureModelFactory = serviceProvider.GetService<IProcedureModelFactory>();
-
-                var procedureModelFactoryOptions = new ModuleModelFactoryOptions
-                {
-                    FullModel = true,
-                    Modules = reverseEngineerOptions.Tables.Where(t => t.ObjectType == ObjectType.Procedure).Select(m => m.Name),
-                };
-
-                var procedureModel = procedureModelFactory.Create(reverseEngineerOptions.Dacpac ?? reverseEngineerOptions.ConnectionString, procedureModelFactoryOptions);
-
-                var procedureOptions = new ModuleScaffolderOptions
-                {
-                    ContextDir = outputContextDir,
-                    ContextName = reverseEngineerOptions.ContextClassName,
-                    ContextNamespace = contextNamespace,
-                    ModelNamespace = modelNamespace,
-                    NullableReferences = reverseEngineerOptions.UseNullableReferences,
-                };
-
-                var procedureScaffoldedModel = procedureModelScaffolder.ScaffoldModel(procedureModel, procedureOptions, ref errors);
-
-                if (procedureScaffoldedModel != null)
-                {
-                    procedurePaths = procedureModelScaffolder.Save(
-                        procedureScaffoldedModel,
-                        Path.GetFullPath(Path.Combine(reverseEngineerOptions.ProjectPath, reverseEngineerOptions.OutputPath ?? string.Empty)),
-                        contextNamespace);
-                }
-            }
-
             SavedModelFiles functionPaths = null;
-            var functionModelScaffolder = serviceProvider.GetService<IFunctionScaffolder>();
-            if (functionModelScaffolder != null
-                && reverseEngineerOptions.Tables.Any(t => t.ObjectType == ObjectType.ScalarFunction))
+
+            SavedModelFiles filePaths = ReverseEngineerScaffolder.GenerateDbContext(options, serviceProvider, schemas, outputContextDir, modelNamespace, contextNamespace);
+
+            if (options.SelectedToBeGenerated != 2)
             {
-                var functionModelFactory = serviceProvider.GetService<IFunctionModelFactory>();
+                procedurePaths = ReverseEngineerScaffolder.GenerateStoredProcedures(options, ref errors, serviceProvider, outputContextDir, modelNamespace, contextNamespace);
 
-                var modelFactoryOptions = new ModuleModelFactoryOptions
-                {
-                    FullModel = true,
-                    Modules = reverseEngineerOptions.Tables.Where(t => t.ObjectType == ObjectType.ScalarFunction).Select(m => m.Name),
-                };
-
-                var functionModel = functionModelFactory.Create(reverseEngineerOptions.Dacpac ?? reverseEngineerOptions.ConnectionString, modelFactoryOptions);
-
-                var functionOptions = new ModuleScaffolderOptions
-                {
-                    ContextDir = outputContextDir,
-                    ContextName = reverseEngineerOptions.ContextClassName,
-                    ContextNamespace = contextNamespace,
-                    ModelNamespace = modelNamespace,
-                    NullableReferences = reverseEngineerOptions.UseNullableReferences,
-                };
-
-                var functionScaffoldedModel = functionModelScaffolder.ScaffoldModel(functionModel, functionOptions, ref errors);
-
-                if (functionScaffoldedModel != null)
-                {
-                    functionPaths = functionModelScaffolder.Save(
-                        functionScaffoldedModel,
-                        Path.GetFullPath(Path.Combine(reverseEngineerOptions.ProjectPath, reverseEngineerOptions.OutputPath ?? string.Empty)),
-                        contextNamespace);
-                }
-            }
-
-            var modelOptions = new ModelReverseEngineerOptions
-            {
-                UseDatabaseNames = reverseEngineerOptions.UseDatabaseNames,
-#if CORE50
-                NoPluralize = !reverseEngineerOptions.UseInflector,
-#endif
-            };
-
-            var codeOptions = new ModelCodeGenerationOptions
-            {
-                UseDataAnnotations = !reverseEngineerOptions.UseFluentApiOnly,
-                Language = "C#",
-                ContextName = reverseEngineerOptions.ContextClassName,
-                ContextDir = outputContextDir,
-                RootNamespace = null,
-                ContextNamespace = contextNamespace,
-                ModelNamespace = modelNamespace,
-                SuppressConnectionStringWarning = false,
-                ConnectionString = reverseEngineerOptions.ConnectionString,
-#if CORE50
-                SuppressOnConfiguring = !reverseEngineerOptions.IncludeConnectionString,
-#endif
-            };
-
-            var dbOptions = new DatabaseModelFactoryOptions(reverseEngineerOptions.Tables.Where(t => t.ObjectType.HasColumns()).Select(m => m.Name), schemas);
-
-            var scaffoldedModel = ScaffoldModel(
-                    reverseEngineerOptions.Dacpac ?? reverseEngineerOptions.ConnectionString,
-                    dbOptions,
-                    modelOptions,
-                    codeOptions,
-                    reverseEngineerOptions.UseBoolPropertiesWithoutDefaultSql,
-                    reverseEngineerOptions.UseNoNavigations,
-                    serviceProvider);
-
-            var filePaths = scaffolder.Save(
-                scaffoldedModel,
-                Path.GetFullPath(Path.Combine(reverseEngineerOptions.ProjectPath, reverseEngineerOptions.OutputPath ?? string.Empty)),
-                overwriteFiles: true);
-
+                functionPaths = ReverseEngineerScaffolder.GenerateFunctions(options, ref errors, serviceProvider, outputContextDir, modelNamespace, contextNamespace);
 #if CORE50
 #else
-            RemoveOnConfiguring(filePaths.ContextFile, reverseEngineerOptions.IncludeConnectionString);
+                RemoveOnConfiguring(filePaths.ContextFile, options.IncludeConnectionString);
 #endif
-            foreach (var file in filePaths.AdditionalFiles)
+                if (!options.UseHandleBars)
+                {
+                    PostProcess(filePaths.ContextFile);
+                }
+
+                entityTypeConfigurationPaths = SplitDbContext(filePaths.ContextFile, options.UseDbContextSplitting, contextNamespace, options.UseNullableReferences);
+            }
+            else if (options.SelectedToBeGenerated == 2
+                && (options.Tables.Count(t => t.ObjectType == ObjectType.Procedure) > 0
+                || options.Tables.Count(t => t.ObjectType == ObjectType.ScalarFunction) > 0))
             {
-                PostProcess(file);
+                warnings.Add("Selected stored procedures/scalar functions will not be generated, as 'Entity Types only' was selected");
             }
 
-            PostProcess(filePaths.ContextFile);
+            if (!options.UseHandleBars)
+            {
+                foreach (var file in filePaths.AdditionalFiles)
+                {
+                    PostProcess(file);
+                }
+            }
 
-            var entityTypeConfigurationPaths = SplitDbContext(filePaths.ContextFile, reverseEngineerOptions.UseDbContextSplitting, contextNamespace);
+            var cleanUpPaths = CreateCleanupPaths(procedurePaths, functionPaths, filePaths);
 
+            CleanUp(cleanUpPaths, entityTypeConfigurationPaths, outputDir);
+
+            var allfiles = filePaths.AdditionalFiles.ToList();
+            if (procedurePaths != null)
+            {
+                allfiles.AddRange(procedurePaths.AdditionalFiles);
+                allfiles.Add(procedurePaths.ContextFile);
+            }
+            if (functionPaths != null)
+            {
+                allfiles.AddRange(functionPaths.AdditionalFiles);
+                allfiles.Add(functionPaths.ContextFile);
+            }
+
+            var result = new ReverseEngineerResult
+            {
+                EntityErrors = errors,
+                EntityWarnings = warnings,
+                EntityTypeFilePaths = allfiles,
+                ContextFilePath = filePaths.ContextFile,
+                ContextConfigurationFilePaths = entityTypeConfigurationPaths,
+            };
+
+            return result;
+        }
+
+        private static SavedModelFiles CreateCleanupPaths(SavedModelFiles procedurePaths, SavedModelFiles functionPaths, SavedModelFiles filePaths)
+        {
             var cleanUpPaths = new SavedModelFiles(filePaths.ContextFile, filePaths.AdditionalFiles);
+
             if (procedurePaths != null)
             {
                 cleanUpPaths.AdditionalFiles.Add(procedurePaths.ContextFile);
@@ -195,87 +156,32 @@ namespace RevEng.Core
                     cleanUpPaths.AdditionalFiles.Add(additionalFile);
                 }
             }
+
             if (functionPaths != null)
             {
                 cleanUpPaths.AdditionalFiles.Add(functionPaths.ContextFile);
             }
 
-            CleanUp(cleanUpPaths, entityTypeConfigurationPaths);
-
-            var result = new ReverseEngineerResult
-            {
-                EntityErrors = errors,
-                EntityWarnings = warnings,
-                EntityTypeFilePaths = filePaths.AdditionalFiles,
-                ContextFilePath = filePaths.ContextFile,
-                ContextConfigurationFilePaths = entityTypeConfigurationPaths,
-            };
-
-            return result;
+            return cleanUpPaths;
         }
 
-        private static ScaffoldedModel ScaffoldModel(
-            string connectionString,
-            DatabaseModelFactoryOptions databaseOptions,
-            ModelReverseEngineerOptions modelOptions,
-            ModelCodeGenerationOptions codeOptions,
-            bool removeNullableBoolDefaults,
-            bool excludeNavigations,
-            ServiceProvider serviceProvider)
-        {
-            var _databaseModelFactory = serviceProvider.GetService<IDatabaseModelFactory>();
-            var _factory = serviceProvider.GetService<IScaffoldingModelFactory>();
-            var _selector = serviceProvider.GetService<IModelCodeGeneratorSelector>();
-
-            var databaseModel = _databaseModelFactory.Create(connectionString, databaseOptions);
-
-            if (removeNullableBoolDefaults)
-            {
-                foreach (var column in databaseModel.Tables 
-                    .SelectMany(table => table.Columns
-                        .Where(column => column.StoreType == "bit"
-                            && !column.IsNullable
-                            && !string.IsNullOrEmpty(column.DefaultValueSql))))
-                {
-                    column.DefaultValueSql = null;
-                }
-            }
-
-            if (excludeNavigations)
-            {
-                foreach (var table in databaseModel.Tables)
-                {
-                    table.ForeignKeys.Clear();
-                }
-            }
-
-#if CORE50
-            var model = _factory.Create(databaseModel, modelOptions);
-#else
-            var model = _factory.Create(databaseModel, modelOptions.UseDatabaseNames);
-#endif
-            if (model == null)
-            {
-                throw new InvalidOperationException($"No model from provider {_factory.GetType().ShortDisplayName()}");
-            }
-
-            var codeGenerator = _selector.Select(codeOptions.Language);
-
-            return codeGenerator.GenerateModel(model, codeOptions);
-        }
-
-        private static List<string> SplitDbContext(string contextFile, bool useDbContextSplitting, string contextNamespace)
+        private static List<string> SplitDbContext(string contextFile, bool useDbContextSplitting, string contextNamespace, bool supportNullable)
         {
             if (!useDbContextSplitting)
             {
                 return new List<string>();
             }
 
-            return DbContextSplitter.Split(contextFile, contextNamespace);
+            return DbContextSplitter.Split(contextFile, contextNamespace, supportNullable);
         }
 
         private static void RemoveOnConfiguring(string contextFile, bool includeConnectionString)
         {
+            if (string.IsNullOrEmpty(contextFile))
+            {
+                return;
+            }
+
             var finalLines = new List<string>();
             var lines = File.ReadAllLines(contextFile);
 
@@ -312,35 +218,45 @@ namespace RevEng.Core
 
         private static void PostProcess(string file)
         {
+            if (string.IsNullOrEmpty(file))
+            {
+                return;
+            }
+
             var text = File.ReadAllText(file, Encoding.UTF8);
-            File.WriteAllText(file, PathHelper.Header 
-                + Environment.NewLine 
+            File.WriteAllText(file, PathHelper.Header
+                + Environment.NewLine
                 + text.Replace(";Command Timeout=300", string.Empty, StringComparison.OrdinalIgnoreCase)
                 .Replace(";Trust Server Certificate=True", string.Empty, StringComparison.OrdinalIgnoreCase)
                 .TrimEnd(), Encoding.UTF8)
                 ;
         }
 
-        private static void CleanUp(SavedModelFiles filePaths, List<string> entityTypeConfigurationPaths)
+        private static void CleanUp(SavedModelFiles filePaths, List<string> entityTypeConfigurationPaths, string outputDir)
         {
-            var contextFolderFiles = Directory.GetFiles(Path.GetDirectoryName(filePaths.ContextFile), "*.cs");
+            var allGeneratedFiles = filePaths.AdditionalFiles.Select(s => Path.GetFullPath(s)).Concat(entityTypeConfigurationPaths).ToHashSet();
 
-            var allGeneratedFiles = filePaths.AdditionalFiles.Select(s => Path.GetFullPath(s)).Concat(new List<string> { Path.GetFullPath(filePaths.ContextFile) }).Concat(entityTypeConfigurationPaths).ToList();
-
-            foreach (var contextFolderFile in contextFolderFiles)
+            if (!string.IsNullOrEmpty(filePaths.ContextFile))
             {
-                if (allGeneratedFiles.Contains(contextFolderFile, StringComparer.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
+                var contextFolderFiles = Directory.GetFiles(Path.GetDirectoryName(filePaths.ContextFile), "*.cs");
 
-                TryRemoveFile(contextFolderFile);
+                allGeneratedFiles = filePaths.AdditionalFiles.Select(s => Path.GetFullPath(s)).Concat(new List<string> { Path.GetFullPath(filePaths.ContextFile) }).Concat(entityTypeConfigurationPaths).ToHashSet();
+
+                foreach (var contextFolderFile in contextFolderFiles)
+                {
+                    if (allGeneratedFiles.Contains(contextFolderFile, StringComparer.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    TryRemoveFile(contextFolderFile);
+                }
             }
 
             if (filePaths.AdditionalFiles.Count == 0)
                 return;
 
-            foreach (var modelFile in Directory.GetFiles(Path.GetDirectoryName(filePaths.AdditionalFiles.First()), "*.cs"))
+            foreach (var modelFile in Directory.GetFiles(outputDir, "*.cs", SearchOption.AllDirectories))
             {
                 if (allGeneratedFiles.Contains(modelFile, StringComparer.OrdinalIgnoreCase))
                 {
@@ -348,6 +264,14 @@ namespace RevEng.Core
                 }
 
                 TryRemoveFile(modelFile);
+            }
+
+            foreach (var directoryPath in Directory.GetDirectories(outputDir))
+            {
+                if(!Directory.EnumerateFileSystemEntries(directoryPath).Any())
+                {
+                    Directory.Delete(directoryPath);
+                }
             }
         }
 

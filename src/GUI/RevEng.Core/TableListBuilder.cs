@@ -1,12 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore.Scaffolding;
+using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
 using Microsoft.Extensions.DependencyInjection;
+using RevEng.Core.Abstractions;
+using RevEng.Core.Abstractions.Model;
+using RevEng.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
-using RevEng.Shared;
-using RevEng.Core.Abstractions.Model;
-using RevEng.Core.Abstractions;
 
 namespace RevEng.Core
 {
@@ -46,10 +46,11 @@ namespace RevEng.Core
                 var columns = new List<ColumnModel>();
 
                 var primaryKeyColumnNames = databaseTable.PrimaryKey?.Columns.Select(c => c.Name).ToHashSet();
+                var foreignKeyColumnNames = databaseTable.ForeignKeys?.SelectMany(c => c.Columns).Select(c => c.Name).ToHashSet();
 
                 foreach (var colum in databaseTable.Columns)
                 {
-                    columns.Add(new ColumnModel(colum.Name, primaryKeyColumnNames?.Contains(colum.Name) ?? false));
+                    columns.Add(new ColumnModel(colum.Name, primaryKeyColumnNames?.Contains(colum.Name) ?? false, foreignKeyColumnNames?.Contains(colum.Name) ?? false));
                 }
 
                 buildResult.Add(new TableModel(databaseTable.Name, databaseTable.Schema, _databaseType, databaseTable is DatabaseView ? ObjectType.View : ObjectType.Table, columns));

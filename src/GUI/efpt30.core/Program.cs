@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace Modelling
 {
@@ -10,11 +11,13 @@ namespace Modelling
         {
             try
             {
+                Console.OutputEncoding = Encoding.UTF8;
+
                 if (args.Length > 0)
                 {
                     var builder = new EfCoreModelBuilder();
                     var migrationsBuilder = new EfCoreMigrationsBuilder();
-#if CORE50
+#if CORE50 
                     var compareBuilder = new EfCoreCompareBuilder();
 #endif
                     List<Tuple<string, string>> result;
@@ -43,7 +46,7 @@ namespace Modelling
                     }
                     else if (args.Contains("scriptmigration") && args.Count() >= 4)
                     {
-                        result = migrationsBuilder.ScriptMigration(args[1], args[2],args[3]);
+                        result = migrationsBuilder.ScriptMigration(args[1], args[2], args[3]);
                     }
                     else if (args.Contains("addmigration") && args.Count() >= 7)
                     {

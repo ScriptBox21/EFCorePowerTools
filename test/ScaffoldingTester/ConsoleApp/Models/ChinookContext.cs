@@ -37,7 +37,7 @@ namespace ConsoleApp.Models
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-                optionsBuilder.UseSqlServer("Data Source=.\\sqlexpress;Initial Catalog=Chinook;Integrated Security=True");
+                optionsBuilder.UseSqlServer("Data Source=.\\SQLEXPRESS;Initial Catalog=Chinook;Integrated Security=True");
             }
         }
 
@@ -45,18 +45,18 @@ namespace ConsoleApp.Models
         {
             modelBuilder.HasAnnotation("Relational:Collation", "SQL_Latin1_General_CP1_CI_AS");
 
-            modelBuilder.ApplyConfiguration(new AlbumConfiguration());
-            modelBuilder.ApplyConfiguration(new ArtistConfiguration());
-            modelBuilder.ApplyConfiguration(new CustomerConfiguration());
-            modelBuilder.ApplyConfiguration(new EmployeeConfiguration());
-            modelBuilder.ApplyConfiguration(new GenreConfiguration());
-            modelBuilder.ApplyConfiguration(new InvoiceConfiguration());
-            modelBuilder.ApplyConfiguration(new InvoiceLineConfiguration());
-            modelBuilder.ApplyConfiguration(new MediaTypeConfiguration());
-            modelBuilder.ApplyConfiguration(new PlaylistConfiguration());
-            modelBuilder.ApplyConfiguration(new PlaylistTrackConfiguration());
-            modelBuilder.ApplyConfiguration(new TitleConfiguration());
-            modelBuilder.ApplyConfiguration(new TrackConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.AlbumConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.ArtistConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.CustomerConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.EmployeeConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.GenreConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.InvoiceConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.InvoiceLineConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.MediaTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.PlaylistConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.PlaylistTrackConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.TitleConfiguration());
+            modelBuilder.ApplyConfiguration(new Configurations.TrackConfiguration());
             OnModelCreatingPartial(modelBuilder);
         }
 

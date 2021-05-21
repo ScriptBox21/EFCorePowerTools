@@ -5,8 +5,9 @@
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:viewModels="clr-namespace:EFCorePowerTools.ViewModels"
+                 xmlns:locale="clr-namespace:EFCorePowerTools.Locales"
+                 Title="{x:Static locale:CompareLocale.ComparisonResult}" 
                  mc:Ignorable="d"
-                 Title="Comparison result"
                  ShowInTaskbar="False"
                  ResizeMode="CanResize"
                  MinHeight="300"
@@ -36,7 +37,7 @@
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Margin="0, 0, 0, 8">
             <CheckBox IsChecked="{Binding ShowDifferencesOnly}" VerticalContentAlignment="Center" />
-            <TextBlock Text="Show differences only" 
+            <TextBlock Text="{x:Static locale:CompareLocale.ShowDifferencesOnly}" 
                        Margin="4,0"/>
         </StackPanel>
         <DataGrid AutoGenerateColumns="False" 
@@ -67,7 +68,7 @@
                 </Style>
             </DataGrid.RowStyle>
             <DataGrid.Columns>
-                <DataGridTemplateColumn MinWidth="70" Header="Name">
+                <DataGridTemplateColumn MinWidth="70" Header="{x:Static locale:CompareLocale.HeaderName}">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Grid>
@@ -116,14 +117,14 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn MinWidth="70" Header="Type" Binding="{Binding Type, Converter={StaticResource EnumToLabelConverter}}"/>
-                <DataGridTextColumn MinWidth="70" Header="State" Binding="{Binding State, Converter={StaticResource EnumToLabelConverter}}"/>
-                <DataGridTextColumn MinWidth="70" Header="Attribute" Binding="{Binding Attribute, Converter={StaticResource EnumToLabelConverter}}"/>
-                <DataGridTextColumn MinWidth="70" Header="Expected" Binding="{Binding Expected}" />
-                <DataGridTextColumn MinWidth="70" Header="Found" Binding="{Binding Found}"/>
+                <DataGridTextColumn MinWidth="70" Header="{x:Static locale:CompareLocale.HeaderType}" Binding="{Binding Type, Converter={StaticResource EnumToLabelConverter}}"/>
+                <DataGridTextColumn MinWidth="70" Header="{x:Static locale:CompareLocale.HeaderState}" Binding="{Binding State, Converter={StaticResource EnumToLabelConverter}}"/>
+                <DataGridTextColumn MinWidth="70" Header="{x:Static locale:CompareLocale.HeaderAttribute}" Binding="{Binding Attribute, Converter={StaticResource EnumToLabelConverter}}"/>
+                <DataGridTextColumn MinWidth="70" Header="{x:Static locale:CompareLocale.HeaderExpected}" Binding="{Binding Expected}" />
+                <DataGridTextColumn MinWidth="70" Header="{x:Static locale:CompareLocale.HeaderFound}" Binding="{Binding Found}"/>
             </DataGrid.Columns>
         </DataGrid>
-        <dw:DialogButton Content="Close"
+        <dw:DialogButton Content="{x:Static locale:CompareLocale.Close}"
                          Grid.Row="2"
                          HorizontalAlignment="Right"
                          Command="{Binding CloseCommand}"

@@ -8,6 +8,7 @@
    "ModelNamespace": null,
    "OutputContextPath": null,
    "OutputPath": "Models",
+   "ProceduresReturnList": false,
    "ProjectRootNamespace": "ConsoleApp",
    "Schemas": null,
    "SelectedHandlebarsLanguage": 0,
@@ -66,6 +67,7 @@
          "ObjectType": 1
       }
    ],
+   "UiHint": "DESKTOP-9UILCL8\\SQLEXPRESS.Chinook",
    "UseBoolPropertiesWithoutDefaultSql": false,
    "UseDatabaseNames": false,
    "UseDbContextSplitting": true,
@@ -75,6 +77,7 @@
    "UseLegacyPluralizer": false,
    "UseNoConstructor": false,
    "UseNoNavigations": false,
+   "UseNoObjectFilter": false,
    "UseNodaTime": false,
    "UseNullableReferences": false,
    "UseSpatial": false

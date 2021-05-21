@@ -9,6 +9,7 @@ namespace RevEng.Shared
         public string ProjectPath { get; set; }
         public string OutputPath { get; set; }
         public string OutputContextPath { get; set; }
+        public bool UseSchemaFolders { get; set; }
         public string ModelNamespace { get; set; }
         public string ContextNamespace { get; set; }
         public string ProjectRootNamespace { get; set; }
@@ -32,6 +33,7 @@ namespace RevEng.Shared
         public bool UseNullableReferences { get; set; }
         public bool UseNoConstructor { get; set; }
         public bool UseNoNavigations { get; set; }
+        public bool UseNoObjectFilter { get; set; }
         public bool FilterSchemas { get; set; }
         public List<SchemaInfo> Schemas { get; set; }
     }

@@ -1,18 +1,26 @@
-﻿using EntityFrameworkCore.Scaffolding.Handlebars;
+﻿#if CORE60
+#else
+using EntityFrameworkCore.Scaffolding.Handlebars;
 using ErikEJ.EntityFrameworkCore.SqlServer.Scaffolding;
+using FirebirdSql.EntityFrameworkCore.Firebird.Design.Internal;
+using Oracle.EntityFrameworkCore.Design.Internal;
+using Pomelo.EntityFrameworkCore.MySql.Design.Internal;
+#endif
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Design.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Scaffolding;
 using Microsoft.EntityFrameworkCore.Scaffolding.Internal;
 using Microsoft.EntityFrameworkCore.Sqlite.Design.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Design.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Design.Internal;
-using Oracle.EntityFrameworkCore.Design.Internal;
-using Pomelo.EntityFrameworkCore.MySql.Design.Internal;
 using RevEng.Core.Procedures;
 using RevEng.Shared;
+#if CORE50
+using SimplerSoftware.EntityFrameworkCore.SqlServer.NodaTime.Design;
+#endif
 using System;
 
 namespace RevEng.Core
@@ -33,6 +41,7 @@ namespace RevEng.Core
                     provider.GetService<ICSharpHelper>(),
                     options.UseNullableReferences,
                     options.UseNoConstructor))
+#elif CORE60
 #else
                 .AddSingleton<ICSharpEntityTypeGenerator>(provider =>
                  new CommentCSharpEntityTypeGenerator(
@@ -50,6 +59,9 @@ namespace RevEng.Core
                     provider.GetService<ICSharpUtilities>(),
                     provider.GetService<IScaffoldingTypeMapper>(),
                     provider.GetService<LoggingDefinitions>(),
+#if CORE60
+                    provider.GetService<IModelRuntimeInitializer>(),
+#endif
                     options.Tables,
                     options.DatabaseType
                 ));
@@ -59,6 +71,8 @@ namespace RevEng.Core
                 serviceCollection.AddSingleton<ICandidateNamingService>(provider => new ReplacingCandidateNamingService(options.CustomReplacers));
             }
 
+#if CORE60
+#else
             if (options.UseHandleBars)
             {
                 serviceCollection.AddHandlebarsScaffolding(hbOptions =>
@@ -68,7 +82,7 @@ namespace RevEng.Core
                 });
                 serviceCollection.AddSingleton<ITemplateFileService>(provider => new CustomTemplateFileService(options.ProjectPath));
             }
-
+#endif
             if (options.UseInflector || options.UseLegacyPluralizer)
             {
                 if (options.UseLegacyPluralizer)
@@ -99,16 +113,24 @@ namespace RevEng.Core
                         var spatial = new SqlServerNetTopologySuiteDesignTimeServices();
                         spatial.ConfigureDesignTimeServices(serviceCollection);
                     }
-
+#if CORE50
+                    if (options.UseNodaTime)
+                    {
+                        var nodaTime = new SqlServerNodaTimeDesignTimeServices();
+                        nodaTime.ConfigureDesignTimeServices(serviceCollection);
+                    }
+#endif
                     break;
 
                 case DatabaseType.SQLServerDacpac:
                     var dacProvider = new SqlServerDesignTimeServices();
                     dacProvider.ConfigureDesignTimeServices(serviceCollection);
 
+#if CORE60
+#else
                     serviceCollection.AddSingleton<IDatabaseModelFactory, SqlServerDacpacDatabaseModelFactory>();
                     serviceCollection.AddSqlServerDacpacStoredProcedureDesignTimeServices();
-
+#endif
                     if (options.UseSpatial)
                     {
                         var spatial = new SqlServerNetTopologySuiteDesignTimeServices();
@@ -135,6 +157,8 @@ namespace RevEng.Core
 
                     break;
 
+#if CORE60
+#else
                 case DatabaseType.Mysql:
                     var mysqlProvider = new MySqlDesignTimeServices();
                     mysqlProvider.ConfigureDesignTimeServices(serviceCollection);
@@ -146,12 +170,16 @@ namespace RevEng.Core
                     }
 
                     break;
-
                 case DatabaseType.Oracle:
                     var oracleProvider = new OracleDesignTimeServices();
                     oracleProvider.ConfigureDesignTimeServices(serviceCollection);
                     break;
 
+                case DatabaseType.Firebird:
+                    var firebirdProvider = new FbDesignTimeServices();
+                    firebirdProvider.ConfigureDesignTimeServices(serviceCollection);
+                    break;
+#endif
                 case DatabaseType.SQLite:
                     var sqliteProvider = new SqliteDesignTimeServices();
                     sqliteProvider.ConfigureDesignTimeServices(serviceCollection);

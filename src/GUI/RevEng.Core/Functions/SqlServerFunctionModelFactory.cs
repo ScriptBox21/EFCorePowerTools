@@ -22,15 +22,6 @@ namespace RevEng.Core.Procedures
             var found = new List<Tuple<string, string, int>>();
             var errors = new List<string>();
 
-            if (options.FullModel && !options.Modules.Any())
-            {
-                return new FunctionModel
-                {
-                    Functions = result,
-                    Errors = errors,
-                };
-            }
-
             var filter = options.Modules.ToHashSet();
 
             using (var connection = new SqlConnection(connectionString))
@@ -38,7 +29,8 @@ namespace RevEng.Core.Procedures
                 var sql = $@"
 SELECT SCHEMA_NAME(schema_id) AS [Schema], name AS [Name], object_id
 FROM sys.objects 
-WHERE objectproperty(OBJECT_ID,'IsScalarFunction') = 1;";
+WHERE objectproperty(OBJECT_ID,'IsScalarFunction') = 1
+AND NULLIF([name], '') IS NOT NULL;";
 
                 using (var command = new SqlCommand(sql, connection))
                 {
@@ -89,7 +81,7 @@ WHERE objectproperty(OBJECT_ID,'IsScalarFunction') = 1;";
             var sql = $@"
 SELECT  
     'Parameter' = p.name,  
-    'Type'   = type_name(p.system_type_id),  
+    'Type'   = COALESCE(type_name(p.system_type_id), type_name(p.user_type_id)),  
     'Length'   = CAST(p.max_length AS INT),  
     'Precision'   = CAST(case when type_name(p.system_type_id) = 'uniqueidentifier' 
                 then p.precision  

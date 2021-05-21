@@ -1,4 +1,8 @@
-﻿using JetBrains.Annotations;
+﻿#if CORE60
+using System.Diagnostics.CodeAnalysis;
+#else
+using JetBrains.Annotations;
+#endif
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
@@ -66,7 +70,9 @@ namespace RevEng.Core.Procedures
                 result.AdditionalFiles.Add(new ScaffoldedFile
                 {
                     Code = classContent,
-                    Path = $"{name}.cs",
+                    Path = procedureScaffolderOptions.UseSchemaFolders
+                            ? Path.Combine(procedure.Schema, $"{name}.cs")
+                            : $"{name}.cs"
                 });
             }
 
@@ -99,6 +105,7 @@ namespace RevEng.Core.Procedures
             foreach (var entityTypeFile in scaffoldedModel.AdditionalFiles)
             {
                 var additionalFilePath = Path.Combine(outputDir, entityTypeFile.Path);
+                Directory.CreateDirectory(Path.GetDirectoryName(additionalFilePath));
                 File.WriteAllText(additionalFilePath, entityTypeFile.Code, Encoding.UTF8);
                 additionalFiles.Add(additionalFilePath);
             }
@@ -123,6 +130,9 @@ namespace RevEng.Core.Procedures
             _sb.AppendLine("using Microsoft.EntityFrameworkCore;");
             _sb.AppendLine("using Microsoft.Data.SqlClient;");
             _sb.AppendLine("using System;");
+            _sb.AppendLine("using System.Collections.Generic;");
+            //To support System.Data.DataTable
+            _sb.AppendLine("using System.Data;");
             _sb.AppendLine("using System.Threading;");
             _sb.AppendLine("using System.Threading.Tasks;");
             _sb.AppendLine($"using {procedureScaffolderOptions.ModelNamespace};");
@@ -133,16 +143,41 @@ namespace RevEng.Core.Procedures
 
             using (_sb.Indent())
             {
-                _sb.AppendLine($"public static class {procedureScaffolderOptions.ContextName}ProceduresExtensions");
+                _sb.AppendLine($"public partial class {procedureScaffolderOptions.ContextName}");
                 _sb.AppendLine("{");
-                
                 using (_sb.Indent())
                 {
-                    _sb.AppendLine($"public static {procedureScaffolderOptions.ContextName}Procedures GetProcedures(this {procedureScaffolderOptions.ContextName} context)");
+                    _sb.AppendLine($"private {procedureScaffolderOptions.ContextName}Procedures _procedures;");
+                    _sb.AppendLine();
+                    _sb.AppendLine($"public {procedureScaffolderOptions.ContextName}Procedures Procedures");
                     _sb.AppendLine("{");
                     using (_sb.Indent())
                     {
-                        _sb.AppendLine($"return new {procedureScaffolderOptions.ContextName}Procedures(context);");
+                        _sb.AppendLine("get");
+                        _sb.AppendLine("{");
+                        using (_sb.Indent())
+                        {
+                            _sb.AppendLine($"if (_procedures is null) _procedures = new {procedureScaffolderOptions.ContextName}Procedures(this);");
+                            _sb.AppendLine("return _procedures;");
+
+                        }
+                        _sb.AppendLine("}");
+                        _sb.AppendLine("set");
+                        _sb.AppendLine("{");
+                        using (_sb.Indent())
+                        {
+                            _sb.AppendLine("_procedures = value;");
+
+                        }
+                        _sb.AppendLine("}");
+                    }
+                    _sb.AppendLine("}");
+                    _sb.AppendLine("");
+                    _sb.AppendLine($"public {procedureScaffolderOptions.ContextName}Procedures GetProcedures()");
+                    _sb.AppendLine("{");
+                    using (_sb.Indent())
+                    {
+                        _sb.AppendLine("return Procedures;");
                     }
                     _sb.AppendLine("}");
                 }
@@ -183,7 +218,8 @@ namespace RevEng.Core.Procedures
         private void GenerateProcedure(Procedure procedure, ProcedureModel model)
         {
             var paramStrings = procedure.Parameters.Where(p => !p.Output)
-                .Select(p => $"{code.Reference(p.ClrType())} {p.Name}");
+                .Select(p => $"{code.Reference(p.ClrType())} {p.Name}")
+                .ToList();
 
             var allOutParams = procedure.Parameters.Where(p => p.Output).ToList();
 
@@ -279,14 +315,18 @@ namespace RevEng.Core.Procedures
 
         private static string GenerateMethodSignature(Procedure procedure, List<ModuleParameter> outParams, IEnumerable<string> paramStrings, string retValueName, List<string> outParamStrings, string identifier)
         {
-            var returnType = $"Task<{identifier}Result[]>";
+            string returnType;
 
             if (procedure.HasValidResultSet && procedure.ResultElements.Count == 0)
             {
                 returnType = $"Task<int>";
             }
+            else
+            {
+                returnType = $"Task<List<{identifier}Result>>";
+            }
 
-            var line = $"public async {returnType} {identifier}Async({string.Join(", ", paramStrings)}";
+            var line = $"public virtual async {returnType} {identifier}Async({string.Join(", ", paramStrings)}";
 
             if (outParams.Count() > 0)
             {
@@ -383,7 +423,7 @@ namespace RevEng.Core.Procedures
                 _sb.AppendLine("#nullable enable");
                 _sb.AppendLine();
             }
-            
+
             _sb.AppendLine($"namespace {@namespace}");
             _sb.AppendLine("{");
 
@@ -486,6 +526,11 @@ namespace RevEng.Core.Procedures
 
         private string GenerateUniqueName(Procedure procedure, ProcedureModel model)
         {
+            if (!string.IsNullOrEmpty(procedure.NewName))
+            {
+                return procedure.NewName;
+            }
+
             var numberOfNames = model.Procedures.Where(p => p.Name == procedure.Name).Count();
 
             if (numberOfNames > 1)

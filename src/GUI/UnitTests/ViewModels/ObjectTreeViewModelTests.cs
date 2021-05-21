@@ -2,14 +2,14 @@
 
 namespace UnitTests.ViewModels
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
     using EFCorePowerTools.Contracts.ViewModels;
     using EFCorePowerTools.ViewModels;
     using GalaSoft.MvvmLight.Messaging;
     using Moq;
     using RevEng.Shared;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
 
     [TestFixture]
     public class ObjectTreeViewModelTests
@@ -121,9 +121,9 @@ namespace UnitTests.ViewModels
             var vm = new ObjectTreeViewModel(CreateSchemaInformationViewModelMockObject, CreateTableInformationViewModelMockObject, CreateColumnInformationViewModelMockObject);
 
             var objects = new TableModel[3];
-            objects[0] = new TableModel("departmentdetail", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("DEPTCode", false) }.ToArray());
-            objects[1] = new TableModel("employeedetail", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("EMPCode", false) }.ToArray());
-            objects[2] = new TableModel("same", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("same", false) }.ToArray());
+            objects[0] = new TableModel("departmentdetail", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("DEPTCode", false, false) }.ToArray());
+            objects[1] = new TableModel("employeedetail", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("EMPCode", false, false) }.ToArray());
+            objects[2] = new TableModel("same", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("same", false, false) }.ToArray());
 
             var replacers = new Schema[1];
             replacers[0] = new Schema()
@@ -150,20 +150,12 @@ namespace UnitTests.ViewModels
                             new ColumnNamer { Name = "EMPCode", NewName = "EMPCode" },
 
                         },
-                        Navigations = new List<NavigationRenamer>
-                        {
-                            new NavigationRenamer { Name = "First", NewName = "Second" },
-                        },
                     },
                     new TableRenamer
                     {
                         Name = "same",
                         NewName = "same",
                         Columns = new List<ColumnNamer>(),
-                        Navigations = new List<NavigationRenamer>
-                        {
-                            new NavigationRenamer { Name = "SameFirst", NewName = "SameSecond" },
-                        },
                     },
                 },
             };
@@ -174,13 +166,9 @@ namespace UnitTests.ViewModels
             var renamers = vm.GetRenamedObjects().ToList();
 
             // Assert
-            Assert.AreEqual(3, renamers[0].Tables.Count);
+            Assert.AreEqual(2, renamers[0].Tables.Count);
             Assert.AreEqual(1, renamers[0].Tables[0].Columns.Count);
-            Assert.AreEqual(0, renamers[0].Tables[0].Navigations.Count);
             Assert.AreEqual(1, renamers[0].Tables[1].Columns.Count);
-            Assert.AreEqual(1, renamers[0].Tables[1].Navigations.Count);
-            Assert.AreEqual(0, renamers[0].Tables[2].Columns.Count);
-            Assert.AreEqual(1, renamers[0].Tables[1].Navigations.Count);
         }
 
         [Test]
@@ -244,7 +232,7 @@ namespace UnitTests.ViewModels
             var preFilter = vm.Types.SelectMany(c => c.Schemas).SelectMany(c => c.Objects);
 
             // Act
-            vm.Search("ref");
+            vm.Search("ref", SearchMode.Text);
 
             // Assert
             Assert.AreEqual(databaseObjects.Length, preFilter.Count());
@@ -261,7 +249,7 @@ namespace UnitTests.ViewModels
             vm.AddObjects(databaseObjects, null);
 
             // Act
-            vm.Search("ref");
+            vm.Search("ref", SearchMode.Text);
 
             // Assert
             Assert.That(() =>
@@ -464,9 +452,9 @@ namespace UnitTests.ViewModels
             {
                 return new[]
                 {
-                    new ColumnModel("Id", true),
-                    new ColumnModel("column1", false),
-                    new ColumnModel("column2", false)
+                    new ColumnModel("Id", true, false),
+                    new ColumnModel("column1", false, false),
+                    new ColumnModel("column2", false, false)
                 };
             }
 
@@ -474,9 +462,9 @@ namespace UnitTests.ViewModels
             {
                 return new[]
                 {
-                    new ColumnModel("Id", false),
-                    new ColumnModel("column1", false),
-                    new ColumnModel("column2", false)
+                    new ColumnModel("Id", false, false),
+                    new ColumnModel("column1", false, false),
+                    new ColumnModel("column2", false, false)
                 };
             }
 
@@ -492,7 +480,7 @@ namespace UnitTests.ViewModels
             r[7] = new TableModel("view2", "views", DatabaseType.SQLServer, ObjectType.View, CreateColumnsWithoutId());
             r[8] = new TableModel("procedure1", "stored", DatabaseType.SQLServer, ObjectType.Procedure, new ColumnModel[0]);
             r[9] = new TableModel("procedure2", "stored", DatabaseType.SQLServer, ObjectType.Procedure, new ColumnModel[0]);
-            r[10] = new TableModel("departmentdetail", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("departmentname", false), new ColumnModel("DEPTCode", false), new ColumnModel("Id", true) }.ToArray());
+            r[10] = new TableModel("departmentdetail", null, DatabaseType.Mysql, ObjectType.Table, new List<ColumnModel> { new ColumnModel("departmentname", false, false), new ColumnModel("DEPTCode", false, false), new ColumnModel("Id", true, false) }.ToArray());
             return r;
         }
 

@@ -9,33 +9,23 @@
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup>
+    <UICulture>en</UICulture>
+  </PropertyGroup>
+  <PropertyGroup>
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>Key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <OutputPath>bin\Release\</OutputPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <OutputPath>bin\x86\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>bin\Debug\</OutputPath>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform>AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectTypeGuids>{82b43b9b-a64c-4715-b499-d71e9ca2bd60};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <ProjectGuid>{C670BE03-6397-4AC0-9914-AD1BB679778F}</ProjectGuid>
@@ -56,57 +46,23 @@
     <StartArguments>/rootsuffix Exp</StartArguments>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Contracts\EventArgs\CloseRequestedEventArgs.cs" />
-    <Compile Include="Contracts\ViewModels\IAboutViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IAdvancedModelingOptionsViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\ICompareResultViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\ICompareOptionsViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IObjectTreeSelectableViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IObjectTreeEditableViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IMigrationOptionsViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IObjectTreeRootItemViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IPickSchemasViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IPickConfigViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IPickServerDatabaseViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IPickTablesViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IModelingOptionsViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IColumnInformationViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IObjectTreeViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\ISchemaInformationViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\ITableInformationViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\IViewModel.cs" />
-    <Compile Include="Contracts\ViewModels\ObjectTypeIcon.cs" />
-    <Compile Include="Contracts\Views\IAboutDialog.cs" />
-    <Compile Include="Contracts\Views\IAdvancedModelingOptionsDialog.cs" />
-    <Compile Include="Contracts\Views\ICompareResultDialog.cs" />
-    <Compile Include="Contracts\Views\IDialog.cs" />
-    <Compile Include="Contracts\Views\IMigrationOptionsDialog.cs" />
-    <Compile Include="Contracts\Views\IPickSchemasDialog.cs" />
-    <Compile Include="Contracts\Views\IPickConfigDialog.cs" />
-    <Compile Include="Contracts\Views\ICompareOptionsDialog.cs" />
-    <Compile Include="Contracts\Views\IPickServerDatabaseDialog.cs" />
-    <Compile Include="Contracts\Views\PickTablesDialogResult.cs" />
-    <Compile Include="Contracts\Views\IPickTablesDialog.cs" />
-    <Compile Include="Contracts\Views\IModelingOptionsDialog.cs" />
-    <Compile Include="Contracts\Views\IView.cs" />
-    <Compile Include="Converter\BoolInvertConverter.cs" />
-    <Compile Include="Converter\LevelToWidthConverter.cs" />
-    <Compile Include="Converter\EnumToLabelConverter.cs" />
-    <Compile Include="Converter\ObjectTypeToImageStyleConverter.cs" />
-    <Compile Include="Converter\BoolToVisibilityConverter.cs" />
-    <Compile Include="Converter\CollectionCountToEnabledConverter.cs" />
-    <Compile Include="Converter\ColumnEnabledConverter.cs" />
-    <Compile Include="Converter\FilePathToDisplayNameConverter.cs" />
-    <Compile Include="Converter\CollectionCountToVisibilityConverter.cs" />
-    <Compile Include="DAL\DotNetAccess.cs" />
-    <Compile Include="DAL\IVisualStudioAccess.cs" />
-    <Compile Include="DAL\OperatingSystemAccess.cs" />
-    <Compile Include="DAL\TelemetryAccess.cs" />
+    <Compile Include="..\ErikEJ.EntityFrameworkCore.DgmlBuilder\DebugViewParser.cs">
+      <Link>DgmlBuilder\DebugViewParser.cs</Link>
+    </Compile>
+    <Compile Include="..\ErikEJ.EntityFrameworkCore.DgmlBuilder\DebugViewParserResult.cs">
+      <Link>DgmlBuilder\DebugViewParserResult.cs</Link>
+    </Compile>
+    <Compile Include="..\ErikEJ.EntityFrameworkCore.DgmlBuilder\DgmlBuilder.cs">
+      <Link>DgmlBuilder\DgmlBuilder.cs</Link>
+    </Compile>
     <Compile Include="Dialogs\AdvancedModelingOptionsDialog.xaml.cs">
       <DependentUpon>AdvancedModelingOptionsDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Dialogs\AboutDialog.xaml.cs">
       <DependentUpon>AboutDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\ConnectionDialog.xaml.cs">
+      <DependentUpon>ConnectionDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Dialogs\CompareResultDialog.xaml.cs">
       <DependentUpon>CompareResultDialog.xaml</DependentUpon>
@@ -133,72 +89,57 @@
       <DependentUpon>PickTablesDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="EFCorePowerToolsPackage.cs" />
-    <Compile Include="Extensions\CustomNameOptionsExtensions.cs" />
-    <Compile Include="Extensions\EnvDTEExtensions.cs" />
-    <Compile Include="Extensions\FocusExtensions.cs" />
-    <Compile Include="Extensions\ReverseEngineerOptionsExtensions.cs" />
-    <Compile Include="Extensions\ProjectExtensions.cs" />
-    <Compile Include="Extensions\ProjectItemsExtensions.cs" />
-    <Compile Include="Extensions\ZipArchiveExtensions.cs" />
-    <Compile Include="GlobalSuppressions.cs" />
-    <Compile Include="Guids.cs" />
-    <Compile Include="Handlers\AboutHandler.cs" />
-    <Compile Include="Handlers\Compare\CompareAttributes.cs" />
-    <Compile Include="Handlers\Compare\CompareLogModel.cs" />
-    <Compile Include="Handlers\Compare\CompareState.cs" />
-    <Compile Include="Handlers\Compare\CompareType.cs" />
-    <Compile Include="Handlers\DgmlNugetHandler.cs" />
-    <Compile Include="Handlers\GenerationType.cs" />
-    <Compile Include="Handlers\MigrationsHandler.cs" />
-    <Compile Include="Handlers\ModelAnalyzerHandler.cs" />
-    <Compile Include="Handlers\ProcessLauncher.cs" />
-    <Compile Include="Handlers\Compare\CompareHandler.cs" />
-    <Compile Include="Handlers\ReverseEngineer\ResultDeserializer.cs" />
-    <Compile Include="Handlers\ReverseEngineer\TableListBuilder.cs" />
-    <Compile Include="Handlers\ReverseEngineer\EfRevEngLauncher.cs" />
-    <Compile Include="Handlers\ReverseEngineer\ReverseEngineerCommandOptionsExtensions.cs" />
-    <Compile Include="Handlers\ReverseEngineer\ReverseEngineerOptions.cs" />
-    <Compile Include="Handlers\ReverseEngineer\ReverseEngineerHandler.cs" />
-    <Compile Include="Helpers\InstalledComponentsService.cs" />
-    <Compile Include="Helpers\VsDataHelper.cs" />
-    <Compile Include="Helpers\EnvDTEHelper.cs" />
-    <Compile Include="Helpers\Model.cs" />
-    <Compile Include="Helpers\NuGetHelper.cs" />
-    <Compile Include="Helpers\ReverseEngineerHelper.cs" />
-    <Compile Include="Helpers\SqliteProviderRegistration.cs" />
-    <Compile Include="Helpers\Telemetry.cs" />
-    <Compile Include="Helpers\VsTheming.cs" />
-    <Compile Include="Messages\ShowMessageBoxMessage.cs" />
-    <Compile Include="PkgCmdID.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Resources.Designer.cs">
+    <Compile Include="Locales\AboutLocale.Designer.cs">
+      <DependentUpon>AboutLocale.resx</DependentUpon>
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Settings.Designer.cs">
+    <Compile Include="Locales\ModelAnalyzerLocale.Designer.cs">
+      <DependentUpon>ModelAnalyzerLocale.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Locales\DgmlLocale.Designer.cs">
+      <DependentUpon>DgmlLocale.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Locales\MigrationsLocale.Designer.cs">
+      <DependentUpon>MigrationsLocale.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Locales\CompareLocale.Designer.cs">
+      <DependentUpon>CompareLocale.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Locales\SharedLocale.Designer.cs">
+      <DependentUpon>SharedLocale.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Locales\ReverseEngineerLocale.Designer.cs">
+      <DependentUpon>ReverseEngineerLocale.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="ViewModels\AboutViewModel.cs" />
-    <Compile Include="DAL\VisualStudioAccess.cs" />
-    <Compile Include="ViewModels\CompareLogItemViewModel.cs" />
-    <Compile Include="ViewModels\CompareResultViewModel.cs" />
-    <Compile Include="ViewModels\DatabaseConnectionModel.cs" />
-    <Compile Include="ViewModels\MigrationOptionsViewModel.cs" />
-    <Compile Include="ViewModels\AdvancedModelingOptionsViewModel.cs" />
-    <Compile Include="ViewModels\ModelingOptionsViewModel.cs" />
-    <Compile Include="ViewModels\ObjectTreeRootItemViewModel.cs" />
-    <Compile Include="ViewModels\PickSchemasViewModel.cs" />
-    <Compile Include="ViewModels\PickConfigViewModel.cs" />
-    <Compile Include="ViewModels\CompareOptionsViewModel.cs" />
-    <Compile Include="ViewModels\PickServerDatabaseViewModel.cs" />
-    <Compile Include="ViewModels\PickTablesViewModel.cs" />
-    <Compile Include="ViewModels\ColumnInformationViewModel.cs" />
-    <Compile Include="ViewModels\ObjectTreeViewModel.cs" />
-    <Compile Include="ViewModels\SchemaInformationViewModel.cs" />
-    <Compile Include="ViewModels\TableInformationViewModel.cs" />
+    <Compile Include="Resources.en.Designer.cs">
+      <DependentUpon>Resources.en.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Resources.Designer.cs">
+      <DependentUpon>Resources.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\ScalarFunction_16x.png" />
@@ -211,14 +152,9 @@
     <Resource Include="Resources\Table_16x.png" />
     <Resource Include="Resources\Add_16x.png" />
     <Resource Include="Resources\Remove_16x.png" />
-    <Content Include="..\lib\Microsoft.VisualStudio.ProjectSystem.dll">
-      <Link>Microsoft.VisualStudio.ProjectSystem.dll</Link>
-      <IncludeInVSIX>true</IncludeInVSIX>
-    </Content>
-    <Content Include="..\lib\Microsoft.VisualStudio.ProjectSystem.VS.dll">
-      <Link>Microsoft.VisualStudio.ProjectSystem.VS.dll</Link>
-      <IncludeInVSIX>true</IncludeInVSIX>
-    </Content>
+    <VSCTCompile Include="EFCorePowerToolsPackage.tr.vsct">
+      <ResourceName>Menus.ctmenu</ResourceName>
+    </VSCTCompile>
     <Content Include="Resources\7.png" />
     <Resource Include="Resources\TableWarning_16x.png" />
     <Resource Include="Resources\StatusInvalid_16x.png" />
@@ -251,12 +187,19 @@
     <Content Include="CodeTemplates501.zip">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="..\lib\efpt60.exe.zip">
+      <Link>efpt60.exe.zip</Link>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="..\lib\efreveng60.exe.zip">
+      <Link>efreveng60.exe.zip</Link>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <None Include="efpt.renaming.json" />
     <None Include="Key.snk" />
-    <None Include="Settings.settings">
+    <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
     </None>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
@@ -271,28 +214,17 @@
       <Project>{2BD0C616-7126-4E12-A37D-A08B04BBF5E9}</Project>
       <Name>EFCorePowerTools.Shared</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ErikEJ.EntityFrameworkCore.DgmlBuilder\ErikEJ.EntityFrameworkCore.DgmlBuilder.csproj">
-      <Project>{079b9426-9230-468e-8d02-2a0de07c7237}</Project>
-      <Name>ErikEJ.EntityFrameworkCore.DgmlBuilder</Name>
-    </ProjectReference>
     <ProjectReference Include="..\RevEng.Shared\RevEng.Shared.csproj">
       <Project>{d4594a0c-b02f-469d-9521-f0bdd5a30fc0}</Project>
       <Name>RevEng.Shared</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SqlCeToolbox.DDEX4\SqlCeToolbox.DDEX4.csproj">
-      <Project>{42939e33-fc72-459c-9403-b62ab074635e}</Project>
-      <Name>SqlCeToolbox.DDEX4</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="ISqlCeScripting">
-      <HintPath>..\lib\ISqlCeScripting.dll</HintPath>
+    <Reference Include="Microsoft.ApplicationInsights, Version=2.17.0.146, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\lib\Microsoft.ApplicationInsights.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="SqlCeScripting40">
-      <HintPath>..\lib\SqlCeScripting40.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -325,14 +257,99 @@
     <None Include="Resources\Package.ico" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Locales\AboutLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\AboutLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\AboutLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>AboutLocale.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\AboutLocale.en.resx" />
+    <EmbeddedResource Include="Locales\AboutLocale.it.resx" />
+    <EmbeddedResource Include="Locales\AboutLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Locales\CompareLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\CompareLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\CompareLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>CompareLocale.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\CompareLocale.en.resx" />
+    <EmbeddedResource Include="Locales\CompareLocale.it.resx" />
+    <EmbeddedResource Include="Locales\CompareLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Locales\DgmlLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\DgmlLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\DgmlLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>DgmlLocale.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\DgmlLocale.it.resx" />
+    <EmbeddedResource Include="Locales\DgmlLocale.en.resx" />
+    <EmbeddedResource Include="Locales\DgmlLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Locales\MigrationsLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\MigrationsLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\MigrationsLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>MigrationsLocale.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\MigrationsLocale.en.resx" />
+    <EmbeddedResource Include="Locales\MigrationsLocale.it.resx" />
+    <EmbeddedResource Include="Locales\MigrationsLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Locales\ModelAnalyzerLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\ModelAnalyzerLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\ModelAnalyzerLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>ModelAnalyzerLocale.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\ModelAnalyzerLocale.en.resx" />
+    <EmbeddedResource Include="Locales\ModelAnalyzerLocale.it.resx" />
+    <EmbeddedResource Include="Locales\ModelAnalyzerLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Locales\ReverseEngineerLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\ReverseEngineerLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\ReverseEngineerLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>ReverseEngineerLocale.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\ReverseEngineerLocale.en.resx" />
+    <EmbeddedResource Include="Locales\ReverseEngineerLocale.it.resx" />
+    <EmbeddedResource Include="Locales\ReverseEngineerLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Locales\SharedLocale.tr.resx" />
+    <EmbeddedResource Include="Locales\SharedLocale.fr.resx" />
+    <EmbeddedResource Include="Locales\SharedLocale.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>SharedLocale.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\SharedLocale.it.resx" />
+    <EmbeddedResource Include="Locales\SharedLocale.en.resx" />
+    <EmbeddedResource Include="Locales\SharedLocale.zh-Hans.resx" />
+    <EmbeddedResource Include="Resources.en.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.en.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="VSPackage.resx">
+    <EmbeddedResource Include="VSPackage.tr.resx" />
+    <EmbeddedResource Include="VSPackage.fr.resx" />
+    <EmbeddedResource Include="VSPackage.it.resx">
       <MergeWithCTO>true</MergeWithCTO>
-      <ManifestResourceName>VSPackage</ManifestResourceName>
+      <LogicalName>VSPackage.it.Resources</LogicalName>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="VSPackage.zh-Hans.resx">
+      <MergeWithCTO>true</MergeWithCTO>
+      <LogicalName>VSPackage.zh-Hans.Resources</LogicalName>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="VSPackage.en.resx">
+      <MergeWithCTO>true</MergeWithCTO>
+      <LogicalName>VSPackage.en.Resources</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
@@ -341,6 +358,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Dialogs\AboutDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Dialogs\ConnectionDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -396,6 +417,7 @@
     <Content Include="Resources\efcreveng2.png" />
     <Resource Include="Resources\ImportPackage_16x.png" />
     <Resource Include="Resources\GlyphRight_16x.png" />
+    <Resource Include="Resources\GlyphDown_16x.png" />
     <Content Include="Resources\license.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
@@ -411,17 +433,24 @@
     <Resource Include="Resources\3.png" />
     <Resource Include="Resources\4.png" />
     <Resource Include="Resources\5.png" />
-    <VSCTCompile Include="EFCorePowerToolsPackage.vsct">
+    <VSCTCompile Include="EFCorePowerToolsPackage.en.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
-      <SubType>Designer</SubType>
+    </VSCTCompile>
+    <VSCTCompile Include="EFCorePowerToolsPackage.it.vsct">
+      <ResourceName>Menus.ctmenu</ResourceName>
+    </VSCTCompile>
+    <VSCTCompile Include="EFCorePowerToolsPackage.zh-Hans.vsct">
+      <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.ApplicationInsights">
-      <Version>2.13.1</Version>
+    <PackageReference Include="AdysTech.CredentialManager" Version="2.3.0" />
+    <PackageReference Include="Ben.Demystifier" Version="0.4.1" />
+    <PackageReference Include="Community.VisualStudio.Toolkit">
+      <Version>16.0.75.59</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.CSharp">
-      <Version>4.5.0</Version>
+      <Version>4.7.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection">
       <Version>3.1.0</Version>
@@ -430,27 +459,28 @@
       <Version>16.7.30328.74</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.ProjectSystem">
-      <Version>16.0.374-pre</Version>
+      <Version>16.2.133-pre</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="16.0.206" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools">
-      <Version>16.8.3038</Version>
+      <Version>16.9.1050</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf">
-      <Version>1.0.1</Version>
+      <Version>1.1.31</Version>
     </PackageReference>
     <PackageReference Include="MvvmLightLibs">
       <Version>5.4.1.1</Version>
     </PackageReference>
     <PackageReference Include="NuGet.ProjectModel">
-      <Version>4.9.4</Version>
+      <Version>5.9.1</Version>
     </PackageReference>
     <PackageReference Include="NuGet.VisualStudio">
-      <Version>4.9.4</Version>
+      <Version>5.9.1</Version>
     </PackageReference>
   </ItemGroup>
+  <Import Project="..\Shared\Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

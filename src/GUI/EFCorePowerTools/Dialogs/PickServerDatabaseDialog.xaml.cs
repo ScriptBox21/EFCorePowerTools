@@ -1,24 +1,24 @@
 ﻿namespace EFCorePowerTools.Dialogs
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Windows;
     using Contracts.ViewModels;
     using Contracts.Views;
+    using RevEng.Shared;
     using Shared.DAL;
     using Shared.Models;
-    using RevEng.Shared;
+    using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Linq;
+    using System.Windows;
     using System.Windows.Documents;
 
     public partial class PickServerDatabaseDialog : IPickServerDatabaseDialog
     {
-        private readonly Func<(DatabaseConnectionModel Connection, DatabaseDefinitionModel Definition, bool IncludeViews, bool FilterSchemas, SchemaInfo[] Schemas, string UiHint)> _getDialogResult;
+        private readonly Func<(DatabaseConnectionModel Connection, DatabaseDefinitionModel Definition, CodeGenerationMode CodeGenerationMode, bool FilterSchemas, SchemaInfo[] Schemas, string UiHint)> _getDialogResult;
         private readonly Action<IEnumerable<DatabaseConnectionModel>> _addConnections;
         private readonly Action<IEnumerable<DatabaseDefinitionModel>> _addDefinitions;
         private readonly Action<IEnumerable<SchemaInfo>> _addSchemas;
-        private readonly Action<bool> _useEFCore5;
+        private readonly Action<CodeGenerationMode> _codeGeneration;
         private readonly Action<string> _uiHint;
 
         public PickServerDatabaseDialog(ITelemetryAccess telemetryAccess,
@@ -32,7 +32,7 @@
                 DialogResult = args.DialogResult;
                 Close();
             };
-            _getDialogResult = () => (viewModel.SelectedDatabaseConnection, viewModel.SelectedDatabaseDefinition, viewModel.IncludeViews, viewModel.FilterSchemas, viewModel.Schemas.ToArray(), viewModel.UiHint);
+            _getDialogResult = () => (viewModel.SelectedDatabaseConnection, viewModel.SelectedDatabaseDefinition, (CodeGenerationMode)viewModel.CodeGenerationMode, viewModel.FilterSchemas, viewModel.Schemas.ToArray(), viewModel.UiHint);
             _addConnections = models =>
             {
                 foreach (var model in models)
@@ -49,9 +49,9 @@
                 foreach (var model in models)
                     viewModel.Schemas.Add(model);
             };
-            _useEFCore5 = efCore5 =>
+            _codeGeneration = codeGeneration =>
             {
-                viewModel.IncludeViews = efCore5;
+                viewModel.CodeGenerationMode = (int)codeGeneration;
             };
 
             _uiHint = uiHint =>
@@ -76,7 +76,7 @@
             DatabaseConnectionCombobox.Focus();
         }
 
-        public (bool ClosedByOK, (DatabaseConnectionModel Connection, DatabaseDefinitionModel Definition, bool IncludeViews, bool FilterSchemas, SchemaInfo[] Schemas, string UiHint) Payload) ShowAndAwaitUserResponse(bool modal)
+        public (bool ClosedByOK, (DatabaseConnectionModel Connection, DatabaseDefinitionModel Definition, CodeGenerationMode CodeGenerationMode, bool FilterSchemas, SchemaInfo[] Schemas, string UiHint) Payload) ShowAndAwaitUserResponse(bool modal)
         {
             bool closedByOkay;
 
@@ -109,7 +109,7 @@
 
         public void PublishCodeGenerationMode(CodeGenerationMode codeGenerationMode)
         {
-            _useEFCore5(codeGenerationMode == CodeGenerationMode.EFCore5);
+            _codeGeneration(codeGenerationMode);
         }
 
         public void PublishUiHint(string uiHint)

@@ -19,6 +19,7 @@
         private string _ns;
         private string _outputPath;
         private string _outputContextPath;
+        private bool _useSchemaFolders;
         private string _modelNamespace;
         private string _contextNamespace;
         private string _modelName;
@@ -33,6 +34,7 @@
         private bool _useNullableReferences;
         private bool _useNoConstructor;
         private bool _useNoNavigations;
+        private bool _useNoObjectFilter;
 
         public bool UseDataAnnotations
         {
@@ -74,6 +76,17 @@
             {
                 if (value == _outputContextPath) return;
                 _outputContextPath = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool UseSchemaFolders
+        {
+            get => _useSchemaFolders;
+            set
+            {
+                if (value == _useSchemaFolders) return;
+                _useSchemaFolders = value;
                 OnPropertyChanged();
             }
         }
@@ -294,6 +307,17 @@
             {
                 if (value == _useNoNavigations) return;
                 _useNoNavigations = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool UseNoObjectFilter
+        {
+            get => _useNoObjectFilter;
+            set
+            {
+                if (value == _useNoObjectFilter) return;
+                _useNoObjectFilter = value;
                 OnPropertyChanged();
             }
         }

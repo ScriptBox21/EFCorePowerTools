@@ -1,11 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Design.Internal;
@@ -13,6 +8,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 
 namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
 {
@@ -158,7 +158,6 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
             GenerateKeylessAttribute(entityType);
             GenerateTableAttribute(entityType);
             GenerateIndexAttributes(entityType);
-            GenerateCommentAttribute(entityType.GetComment());
 
             var annotations = _annotationCodeGenerator
                 .FilterIgnoredAnnotations(entityType.GetAnnotations())
@@ -326,7 +325,6 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
             GenerateRequiredAttribute(property);
             GenerateColumnAttribute(property);
             GenerateMaxLengthAttribute(property);
-            GenerateCommentAttribute(property.GetComment());
 
             var annotations = _annotationCodeGenerator
                 .FilterIgnoredAnnotations(property.GetAnnotations())
@@ -441,11 +439,11 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
                     {
                         if (navigation.ForeignKey?.IsRequired == true)
                         {
-                            nullableAnnotation = "?";
+                            defaultAnnotation = $" = default!;";
                         }
                         else
                         {
-                            defaultAnnotation = $" = default!;";
+                            nullableAnnotation = "?";
                         }
                     }
 
@@ -504,23 +502,6 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
                 }
             }
         }
-
-        private void GenerateCommentAttribute(string comment)
-        {
-            if (string.IsNullOrEmpty(comment))
-            {
-                return;
-            }
-
-            comment = comment.Replace("\n", " ").Replace("\r", string.Empty);
-
-            var commentAttribute = new AttributeWriter(nameof(CommentAttribute));
-
-            commentAttribute.AddParameter(_code.Literal(System.Security.SecurityElement.Escape(comment)));
-
-            _sb.AppendLine(commentAttribute.ToString());
-        }
-
 
         private void WriteComment(string comment)
         {

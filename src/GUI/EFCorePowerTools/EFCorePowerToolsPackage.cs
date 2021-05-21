@@ -8,6 +8,7 @@ using EFCorePowerTools.Handlers;
 using EFCorePowerTools.Handlers.Compare;
 using EFCorePowerTools.Handlers.ReverseEngineer;
 using EFCorePowerTools.Helpers;
+using EFCorePowerTools.Locales;
 using EFCorePowerTools.Messages;
 using EFCorePowerTools.Shared.BLL;
 using EFCorePowerTools.Shared.DAL;
@@ -23,15 +24,17 @@ using Microsoft.VisualStudio.Shell;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 
 namespace EFCorePowerTools
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [SqliteProviderRegistration]
     [InstalledProductRegistration("#110", "#112", "2.5", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(GuidList.guidDbContextPackagePkgString)]
+    [ProvideOptionPage(typeof(OptionsPageGeneral), "EF Core Power Tools", "General", 100, 101, true)]
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     // ReSharper disable once InconsistentNaming
@@ -43,7 +46,7 @@ namespace EFCorePowerTools
         private readonly DgmlNugetHandler _dgmlNugetHandler;
         private readonly MigrationsHandler _migrationsHandler;
         private readonly CompareHandler _compareHandler;
-        private readonly IServiceProvider _extensionServices;
+        private IServiceProvider _extensionServices;
         private DTE2 _dte2;
 
         public EFCorePowerToolsPackage()
@@ -54,7 +57,6 @@ namespace EFCorePowerTools
             _dgmlNugetHandler = new DgmlNugetHandler(this);
             _migrationsHandler = new MigrationsHandler(this);
             _compareHandler = new CompareHandler(this);
-            _extensionServices = CreateServiceProvider();
         }
 
         internal DTE2 Dte2 => _dte2;
@@ -125,12 +127,27 @@ namespace EFCorePowerTools
                 var menuItem12 = new OleMenuCommand(async (s, e) => await OnProjectContextMenuInvokeHandlerAsync(s, e), null,
                     async (s, e) => await OnProjectMenuBeforeQueryStatusAsync(s, e), menuCommandId12);
                 oleMenuCommandService.AddCommand(menuItem12);
+
+                var menuCommandId1101 = new CommandID(GuidList.guidReverseEngineerMenu,
+                    (int)PkgCmdIDList.cmdidReverseEngineerEdit);
+                var menuItem251 = new OleMenuCommand(async (s, e) => await OnReverseEngineerConfigFileMenuInvokeHandlerAsync(s, e), null,
+                    async (s, e) => await OnReverseEngineerConfigFileMenuBeforeQueryStatusAsync(s, e), menuCommandId1101);
+                oleMenuCommandService.AddCommand(menuItem251);
+
+                var menuCommandId1102 = new CommandID(GuidList.guidReverseEngineerMenu,
+                    (int)PkgCmdIDList.cmdidReverseEngineerRefresh);
+                var menuItem252 = new OleMenuCommand(async (s, e) => await OnReverseEngineerConfigFileMenuInvokeHandlerAsync(s, e), null,
+                    async (s, e) => await OnReverseEngineerConfigFileMenuBeforeQueryStatusAsync(s, e), menuCommandId1102);
+                oleMenuCommandService.AddCommand(menuItem252);
+
             }
             typeof(Microsoft.Xaml.Behaviors.Behavior).ToString();
             typeof(Microsoft.VisualStudio.ProjectSystem.ProjectCapabilities).ToString();
+            typeof(Xceed.Wpf.Toolkit.SplitButton).ToString();
 
-            //Boot Telemetry
-            Telemetry.Enabled = false;
+            _extensionServices = CreateServiceProvider();
+
+            Telemetry.Enabled = Properties.Settings.Default.ParticipateInTelemetry;
             if (Telemetry.Enabled)
             {
                 Telemetry.Initialize(Dte2,
@@ -142,6 +159,29 @@ namespace EFCorePowerTools
         }
 
         private Version VisualStudioVersion => new Version(int.Parse(_dte2.Version.Split('.')[0], System.Globalization.CultureInfo.InvariantCulture), 0);
+
+        private async System.Threading.Tasks.Task OnReverseEngineerConfigFileMenuBeforeQueryStatusAsync(object sender, EventArgs e)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+            var menuCommand = sender as MenuCommand;
+            if (menuCommand == null || _dte2.SelectedItems.Count != 1)
+            {
+                return;
+            }
+
+            var itemName = _dte2.SelectedItems.Item(1).Name;
+            menuCommand.Visible = IsConfigFile(itemName);
+
+            return;
+        }
+
+        private static bool IsConfigFile(string itemName)
+        {
+            return itemName != null &&
+                itemName.StartsWith("efpt.", StringComparison.OrdinalIgnoreCase) &&
+                itemName.EndsWith(".config.json", StringComparison.OrdinalIgnoreCase);
+        }
 
         private async System.Threading.Tasks.Task OnProjectMenuBeforeQueryStatusAsync(object sender, EventArgs e)
         {
@@ -171,6 +211,40 @@ namespace EFCorePowerTools
                 project.Kind == "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}"; // csproj
 
             return;
+        }
+
+        private async System.Threading.Tasks.Task OnReverseEngineerConfigFileMenuInvokeHandlerAsync(object sender, EventArgs e)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+            var menuCommand = sender as MenuCommand;
+            if (menuCommand == null || _dte2.SelectedItems.Count != 1)
+            {
+                return;
+            }
+
+            var itemName = _dte2.SelectedItems.Item(1).Name;
+            if (!IsConfigFile(itemName))
+            {
+                return;
+            }
+
+            string filename = (string)_dte2.SelectedItems.Item(1).ProjectItem.Properties.Item("FullPath").Value;
+
+            var project = _dte2.SelectedItems.Item(1).ProjectItem.ContainingProject;
+            if (project == null)
+            {
+                return;
+            }
+
+            if (menuCommand.CommandID.ID == PkgCmdIDList.cmdidReverseEngineerEdit)
+            {
+                await _reverseEngineerHandler.ReverseEngineerCodeFirstAsync(project, filename, false);
+            }
+            else if (menuCommand.CommandID.ID == PkgCmdIDList.cmdidReverseEngineerRefresh)
+            {
+                await _reverseEngineerHandler.ReverseEngineerCodeFirstAsync(project, filename, true);
+            }
         }
 
         private async System.Threading.Tasks.Task OnProjectContextMenuInvokeHandlerAsync(object sender, EventArgs e)
@@ -238,20 +312,27 @@ namespace EFCorePowerTools
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            if (!project.TryBuild())
+            try
             {
-                _dte2.StatusBar.Text = "Build failed. Unable to discover a DbContext class.";
+                if (!project.TryBuild())
+                {
+                    _dte2.StatusBar.Text = SharedLocale.BuildFailed;
 
-                return null;
+                    return null;
+                }
+
+                var path = project.GetOutPutAssemblyPath();
+                if (path != null)
+                {
+                    return path;
+                }
+
+                _dte2.StatusBar.Text = SharedLocale.UnableToLocateProjectAssembly;
             }
-
-            var path = project.GetOutPutAssemblyPath();
-            if (path != null)
+            catch (Exception ex)
             {
-                return path;
+                LogError(new List<string>(), ex);
             }
-
-            _dte2.StatusBar.Text = "Unable to locate project assembly.";
 
             return null;
         }
@@ -265,14 +346,16 @@ namespace EFCorePowerTools
 
             // Register views
             services.AddTransient<IAboutDialog, AboutDialog>()
-                    .AddTransient<IPickServerDatabaseDialog, PickServerDatabaseDialog>()
                     .AddTransient<IPickConfigDialog, PickConfigDialog>()
+                    .AddTransient<IPickServerDatabaseDialog, PickServerDatabaseDialog>()
                     .AddTransient<IPickTablesDialog, PickTablesDialog>()
                     .AddTransient<IModelingOptionsDialog, EfCoreModelDialog>()
                     .AddTransient<IMigrationOptionsDialog, EfCoreMigrationsDialog>()
                     .AddTransient<IPickSchemasDialog, PickSchemasDialog>()
+                    .AddTransient<IPickConnectionDialog, ConnectionDialog>()
                     .AddTransient<IAdvancedModelingOptionsDialog, AdvancedModelingOptionsDialog>()
                     .AddSingleton<Func<IPickSchemasDialog>>(sp => sp.GetService<IPickSchemasDialog>)
+                    .AddSingleton<Func<IPickConnectionDialog>>(sp => sp.GetService<IPickConnectionDialog>)
                     .AddSingleton<Func<IAdvancedModelingOptionsDialog>>(sp => sp.GetService<IAdvancedModelingOptionsDialog>)
                     .AddTransient<ICompareOptionsDialog, CompareOptionsDialog>()
                     .AddTransient<ICompareResultDialog, CompareResultDialog>();
@@ -280,6 +363,7 @@ namespace EFCorePowerTools
             // Register view models
             services.AddTransient<IAboutViewModel, AboutViewModel>()
                     .AddTransient<IPickConfigViewModel, PickConfigViewModel>()
+                    .AddTransient<IPickConnectionViewModel, PickConnectionViewModel>()
                     .AddTransient<IPickServerDatabaseViewModel, PickServerDatabaseViewModel>()
                     .AddTransient<IPickTablesViewModel, PickTablesViewModel>()
                     .AddSingleton<Func<ISchemaInformationViewModel>>(() => new SchemaInformationViewModel())
@@ -298,13 +382,13 @@ namespace EFCorePowerTools
             messenger.Register<ShowMessageBoxMessage>(this, HandleShowMessageBoxMessage);
 
             services.AddSingleton<IExtensionVersionService, ExtensionVersionService>()
-                    .AddSingleton<IInstalledComponentsService, InstalledComponentsService>()
                     .AddSingleton<IMessenger>(messenger);
 
             // Register DAL
             services.AddTransient<IVisualStudioAccess, VisualStudioAccess>(provider => new VisualStudioAccess(this))
                     .AddSingleton<ITelemetryAccess, TelemetryAccess>()
                     .AddSingleton<IOperatingSystemAccess, OperatingSystemAccess>()
+                    .AddSingleton<ICredentialStore, CredentialStore>()
                     .AddSingleton<IDotNetAccess, DotNetAccess>();
 
             return services.BuildServiceProvider();
@@ -319,31 +403,32 @@ namespace EFCorePowerTools
 
         internal void LogError(List<string> statusMessages, Exception exception)
         {
-            ThreadHelper.JoinableTaskFactory.Run(async delegate {
+            ThreadHelper.JoinableTaskFactory.Run(async delegate
+            {
                 // Switch to main thread
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-                _dte2.StatusBar.Text = "An error occurred. See the Output window for details.";
-
-                try
+                if (exception != null)
                 {
-                    var buildOutputWindow = _dte2.ToolWindows.OutputWindow.OutputWindowPanes.Item("Build");
-                    buildOutputWindow.OutputString(Environment.NewLine);
-
-                    foreach (var error in statusMessages)
-                    {
-                        buildOutputWindow.OutputString(error + Environment.NewLine);
-                    }
-                    if (exception != null)
-                    {
-                        buildOutputWindow.OutputString(exception + Environment.NewLine);
-                    }
-
-                    buildOutputWindow.Activate();
+                    Telemetry.TrackException(exception);
                 }
-                catch
+
+                _dte2.StatusBar.Text = SharedLocale.AnErrorOccurred;
+
+                var messageBuilder = new StringBuilder();
+
+                foreach (var error in statusMessages)
                 {
-                    EnvDteHelper.ShowError(exception.ToString());
+                    messageBuilder.AppendLine(error);
+                }
+
+                if (exception != null)
+                {
+                    await exception.Demystify().LogAsync(messageBuilder.ToString());
+                }
+                else
+                {
+                    await exception.LogAsync(messageBuilder.ToString());
                 }
             });
         }

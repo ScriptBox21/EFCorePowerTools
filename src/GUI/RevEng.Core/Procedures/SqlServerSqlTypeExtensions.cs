@@ -19,6 +19,8 @@ namespace RevEng.Core
                 { "sql_variant", "variant" },
                 { "geography", "variant" },
                 { "geometry", "variant" },
+                { "hierarchyid", "variant" },
+                { "sysname", "nvarchar" },
             });
 
         public static Type ClrType(this ModuleParameter storedProcedureParameter)
@@ -36,13 +38,12 @@ namespace RevEng.Core
             return GetClrType(storedProcedureResultElement.StoreType, storedProcedureResultElement.Nullable);
         }
 
-        public static SqlDbType DbType(this ProcedureResultElement storedProcedureResultElement)
-        {
-            return GetSqlDbType(storedProcedureResultElement.StoreType);
-        }
-
         private static SqlDbType GetSqlDbType(string storeType)
         {
+            if (string.IsNullOrEmpty(storeType))
+            {
+                throw new ArgumentException("storeType not specified");
+            }
             var cleanedTypeName = RemoveMatchingBraces(storeType);
 
             if (SqlTypeAliases.TryGetValue(cleanedTypeName.ToLowerInvariant(), out string alias))
@@ -50,11 +51,15 @@ namespace RevEng.Core
                 cleanedTypeName = alias;
             }
 
-            return (SqlDbType)Enum.Parse(typeof(SqlDbType), cleanedTypeName, true);
+            if (!Enum.TryParse(cleanedTypeName, true, out SqlDbType result))
+            {
+                throw new ArgumentOutOfRangeException(nameof(cleanedTypeName), $"cleanedTypeName: {cleanedTypeName}");
+            }
+
+            return result;
         }
 
-
-        private static Type GetClrType(string storeType, bool isNullable)
+        public static Type GetClrType(string storeType, bool isNullable)
         {
             var sqlType = GetSqlDbType(storeType);
 
@@ -84,9 +89,10 @@ namespace RevEng.Core
                 case SqlDbType.DateTime:
                 case SqlDbType.SmallDateTime:
                 case SqlDbType.Date:
-                case SqlDbType.Time:
                 case SqlDbType.DateTime2:
                     return isNullable ? typeof(DateTime?) : typeof(DateTime);
+                case SqlDbType.Time:
+                    return isNullable ? typeof(TimeSpan?) : typeof(TimeSpan);
 
                 case SqlDbType.Decimal:
                 case SqlDbType.Money:

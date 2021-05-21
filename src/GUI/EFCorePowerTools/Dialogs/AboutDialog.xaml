@@ -4,14 +4,15 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
-                 Title="About" 
+                 xmlns:locale="clr-namespace:EFCorePowerTools.Locales"
+                 Title="{x:Static locale:AboutLocale.About}"
                  WindowStartupLocation="CenterOwner"
                  SizeToContent="WidthAndHeight"
                  ResizeMode="NoResize"
                  mc:Ignorable="d"
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:viewModels="clr-namespace:EFCorePowerTools.ViewModels"
-                 d:DesignHeight="634"
+                 d:DesignHeight="334"
                  d:DesignWidth="337"
                  d:DataContext="{d:DesignInstance Type=viewModels:AboutViewModel, IsDesignTimeCreatable=False}">
 
@@ -58,10 +59,11 @@
 
         <TextBlock Grid.Row="2"
                    Style="{StaticResource MarginTextBlockStyle}">
-            For support, feedback and full source code, go to:<LineBreak/>
+            <Run Text="{x:Static locale:AboutLocale.SupportFeedbackSourceCode}" /><Run Text=":" />
+            <LineBreak/>
             <Bold><Hyperlink TextDecorations="" Command="{Binding OpenSourcesCommand}">https://github.com/ErikEJ/EFCorePowerTools</Hyperlink></Bold>
             <LineBreak/><LineBreak/>
-            This add-in is FREE, but I would be grateful for a review:
+            <Run Text="{x:Static locale:AboutLocale.AddinFreeDisclaimer}" /><Run Text=":" />
             <LineBreak/>
             <Bold><Hyperlink TextDecorations="" Command="{Binding OpenMarketplaceCommand}">Visual Studio Marketplace</Hyperlink></Bold>
         </TextBlock>
@@ -70,18 +72,11 @@
                    Style="{StaticResource MarginTextBlockStyle}"
                    TextWrapping="WrapWithOverflow"
                    Text="{Binding StatusText}"/>
-
-        <dw:DialogButton Grid.Row="4"
-                         HorizontalAlignment="Left"
-                         Margin="12,0,0,12"
-                         Width="30"
-                         Content="Copy"
-                         Command="{Binding CopyToClipboardCommand}"/>
         <dw:DialogButton Grid.Row="4"
                          HorizontalAlignment="Right"
                          Margin="0,0,12,12"
                          IsDefault="True"
-                         Content="OK"
+                         Content="{x:Static locale:AboutLocale.Ok}"
                          Command="{Binding OkCommand}"/>
     </Grid>
 </dw:DialogWindow>
